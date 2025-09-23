@@ -1,61 +1,59 @@
+# Anime
 
-# AngularMovieAppV2
+This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.0.5.
 
-Welcome to AngularMovieAppV2! This web application enables users to discover movie and TV show trailers, leveraging data from the TMDB API. The project is built with [Angular CLI](https://github.com/angular/angular-cli) version 18.1.3.
+## Development server
 
-## Live Demos
-
-- **Current Version**: [View Live Demo](https://movies.abidakram.com/)
-
-- **Previous Version**: [Old Movie Demo](https://flixmovies-82298.firebaseapp.com)
-
-## Features
-
-- **Explore Trailers**: Browse the latest movie and TV show trailers.
-- **Search Functionality**: Search for specific movies or TV shows.
-- **Detailed Information**: Access detailed information about each movie or show.
-- **Responsive Design**: The app is fully responsive, ensuring a great experience on both desktop and mobile devices.
-
-## Installation Instructions
-
-To run the project locally, follow these steps:
+To start a local development server, run:
 
 ```bash
-# Clone the repository
-git clone https://github.com/abidakram01/angular-movie-app.git
-
-# Navigate to the project directory
-cd angular-movie-app
-
-# Install the dependencies
-npm install or yarn install
-
-# Serve the application locally
 ng serve
-
-# Open your browser and go to http://localhost:4200/
 ```
 
-## Screenshots
+Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
 
-Here are some screenshots of the application:
+## Code scaffolding
 
-<p align="center">
-    <a href="https://movies.abidakram.com/">
-        <img src="https://github.com/user-attachments/assets/715c2055-6184-456c-8fa3-e96c4247e8ae" alt="Screenshot 1" />
-    </a>
-</p>
+Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
 
-<p align="center">
-    <a href="https://movies.abidakram.com/">
-        <img src="https://github.com/user-attachments/assets/e536a559-bd72-4b31-a923-6f8e658fe5b0" alt="Screenshot 2" />
-    </a>
-</p>
+```bash
+ng generate component component-name
+```
 
-## Contribution
+For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
 
-Interested in contributing? If you find a bug, have suggestions, or want to add new features, feel free to create a pull request or open an issue. Contributions are always welcome!
+```bash
+ng generate --help
+```
 
-## Contact
+## Building
 
-For any questions or inquiries, please reach out via email at [abid.akram01@gmail.com](mailto:abid.akram01@gmail.com).
+To build the project run:
+
+```bash
+ng build
+```
+
+This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+
+## Running unit tests
+
+To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
+
+```bash
+ng test
+```
+
+## Running end-to-end tests
+
+For end-to-end (e2e) testing, run:
+
+```bash
+ng e2e
+```
+
+Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+
+## Additional Resources
+
+For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.

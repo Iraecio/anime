@@ -1,0 +1,172 @@
+<div class="home-container">
+  <!-- Barra de Busca -->
+  <div class="search-container">
+    <div class="search-box">
+      <div class="search-input-wrapper">
+        <input 
+          type="text" 
+          class="search-input"
+          placeholder="Buscar animes por título..."
+          [(ngModel)]="searchQuery"
+          (input)="onSearchInput()"
+          [disabled]="showLoading()"
+        >
+        <div class="search-icons">
+          @if (isSearching()) {
+            <div class="search-loading">🔄</div>
+          } @else if (searchQuery()) {
+            <button class="clear-search-btn" (click)="clearSearch()" title="Limpar busca">
+              ✕
+            </button>
+          } @else {
+            <div class="search-icon">🔍</div>
+          }
+        </div>
+      </div>
+      
+      @if (isInSearchMode()) {
+        <div class="search-info">
+          <span class="search-results-count">
+            {{ totalAnimes() }} resultado{{ totalAnimes() !== 1 ? 's' : '' }} 
+            para "{{ searchQuery() }}"
+          </span>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Header do mostruário -->
+  <div class="showcase-header">
+    <h1>{{ isInSearchMode() ? 'Resultados da Busca' : 'Mostruário de Animes' }}</h1>
+    <div class="page-info">
+      <span>Mostrando {{ pageInfo().start }}-{{ pageInfo().end }} de {{ pageInfo().total }} {{ isInSearchMode() ? 'resultados' : 'animes' }}</span>
+    </div>
+
+    @if (showLoading()) {
+    <div class="loading-indicator">🔄 {{ isInSearchMode() ? 'Buscando' : 'Carregando' }} animes...</div>
+    }
+  </div>
+
+  <!-- Grid de animes -->
+  <div class="anime-showcase">
+    @if (showLoading()) {
+    <div class="loading-state">
+      <div class="loading-spinner"></div>
+      <p>{{ isInSearchMode() ? 'Buscando' : 'Carregando' }} animes...</p>
+    </div>
+    } @else if (animes().length === 0 && isInSearchMode()) {
+    <div class="no-results-state">
+      <div class="no-results-icon">🔍</div>
+      <h3>Nenhum anime encontrado</h3>
+      <p>Não encontramos animes com o termo "{{ searchQuery() }}"</p>
+      <button class="btn btn-primary" (click)="clearSearch()">
+        Ver todos os animes
+      </button>
+    </div>
+    } @else {
+    <div class="anime-grid">
+      @for (anime of paginatedResult().data; track anime.id; let i = $index) {
+      <div class="anime-card" [class.expanded]="isAnimeExpanded(anime.id)" (click)="toggleAnimeExpansion(anime, i)">
+        <div class="anime-image">
+          <img [src]="anime.thumb" [alt]="anime.titulo" loading="lazy" />
+          <div class="anime-overlay">
+            @if (anime) {
+            <div class="anime-rating">
+              <span>★ {{ '9' }}</span>
+            </div>
+            }
+          </div>
+        </div>
+        <div class="anime-content">
+          <h3 class="anime-title">{{ anime.titulo }}</h3>
+        </div>
+
+        <!-- Painel de expansão dos episódios -->
+        @if (isAnimeExpanded(anime.id)) {
+        <div class="episodes-panel" [class.expand-left]="expandDirection() === 'left'"
+          [class.expand-right]="expandDirection() === 'right'">
+          <div class="episodes-header">
+            <h4>{{ expandedAnime()?.titulo }}</h4>
+            <button class="close-button" (click)="closeExpansion(); $event.stopPropagation()">✕</button>
+          </div>
+          <div class="episodes-grid">
+            @for (episode of expandedEpisodes(); track episode.id) {
+            <div class="episode-item" [class.watched]="isEpisodeWatched(episode)">
+              <div class="episode-number">{{ episode.numero }}</div>
+              <div class="episode-info">
+                <div class="episode-title">Episódio {{ episode.numero }}</div>
+                <div class="episode-duration">{{ '24min' }}</div>
+              </div>
+              <div class="episode-actions">
+                <button 
+                  class="watch-btn"
+                  (click)="playEpisode(episode); $event.stopPropagation()"
+                  title="Assistir episódio">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8 5v14l11-7z"/>
+                  </svg>
+                </button>
+                <button 
+                  class="watched-toggle"
+                  (click)="toggleEpisodeWatched(episode); $event.stopPropagation()"
+                  [class.watched]="isEpisodeWatched(episode)"
+                  [title]="isEpisodeWatched(episode) ? 'Marcar como não assistido' : 'Marcar como assistido'">
+                  @if (isEpisodeWatched(episode)) {
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                    </svg>
+                  } @else {
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                      <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/>
+                    </svg>
+                  }
+                </button>
+              </div>
+            </div>
+            }
+          </div>
+        </div>
+        }
+      </div>
+      }
+    </div>
+    }
+  </div>
+
+  <!-- Paginação -->
+  <div class="pagination-container">
+    <div class="pagination">
+      <!-- Botão Primeira Página -->
+      <button class="pagination-button" [disabled]="!canGoPrevious()" (click)="goToFirstPage()" title="Primeira página">
+        ««
+      </button>
+
+      <!-- Botão Página Anterior -->
+      <button class="pagination-button" [disabled]="!canGoPrevious()" (click)="previousPage()" title="Página anterior">
+        ‹
+      </button>
+
+      <!-- Números das páginas -->
+      @for (pageNum of pageNumbers(); track pageNum) {
+      <button class="pagination-button" [class.active]="pageNum === currentPage()" (click)="goToPage(pageNum)">
+        {{ pageNum }}
+      </button>
+      }
+
+      <!-- Botão Próxima Página -->
+      <button class="pagination-button" [disabled]="!canGoNext()" (click)="nextPage()" title="Próxima página">
+        ›
+      </button>
+
+      <!-- Botão Última Página -->
+      <button class="pagination-button" [disabled]="!canGoNext()" (click)="goToLastPage()" title="Última página">
+        »»
+      </button>
+    </div>
+
+    <!-- Informações da página atual -->
+    <div class="pagination-info">
+      <span>Página {{ currentPage() }} de {{ totalPages() }}</span>
+    </div>
+  </div>
+</div>

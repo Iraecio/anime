@@ -1,0 +1,938 @@
+@use 'sass:color';
+
+// Variáveis de cores e espaçamentos - DARK THEME
+$primary-color: #007bff;
+$secondary-color: #6c757d;
+$success-color: #28a745;
+$warning-color: #ffc107;
+$danger-color: #dc3545;
+$dark-color: #ffffff;
+$light-color: #2a2a2a;
+$border-color: #404040;
+$background-dark: #1a1a1a;
+$background-darker: #0f0f0f;
+$card-background: #2d2d2d;
+$text-secondary: #b0b0b0;
+
+$spacing-xs: 0.25rem;
+$spacing-sm: 0.5rem;
+$spacing-md: 1rem;
+$spacing-lg: 1.5rem;
+$spacing-xl: 2rem;
+$spacing-xxl: 3rem;
+
+// Container principal
+.home-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, $background-darker 0%, $background-dark 100%);
+  padding: $spacing-xl $spacing-md;
+  color: $dark-color;
+  
+  @media (max-width: 768px) {
+    padding: $spacing-lg $spacing-sm;
+  }
+}
+
+// Barra de busca
+.search-container {
+  margin-bottom: $spacing-xl;
+  
+  .search-box {
+    max-width: 600px;
+    margin: 0 auto;
+    
+    .search-input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      background: $card-background;
+      border: 2px solid $border-color;
+      border-radius: 12px;
+      overflow: hidden;
+      transition: all 0.3s ease;
+      
+      &:focus-within {
+        border-color: $primary-color;
+        box-shadow: 0 0 0 3px rgba($primary-color, 0.1);
+      }
+      
+      .search-input {
+        flex: 1;
+        padding: $spacing-md $spacing-lg;
+        background: transparent;
+        border: none;
+        color: $dark-color;
+        font-size: 1.1rem;
+        outline: none;
+        
+        &::placeholder {
+          color: $text-secondary;
+        }
+        
+        &:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+      }
+      
+      .search-icons {
+        display: flex;
+        align-items: center;
+        padding: 0 $spacing-lg;
+        
+        .search-icon {
+          color: $text-secondary;
+          font-size: 1.2rem;
+        }
+        
+        .search-loading {
+          color: $primary-color;
+          font-size: 1.2rem;
+          animation: spin 1s linear infinite;
+        }
+        
+        .clear-search-btn {
+          background: none;
+          border: none;
+          color: $text-secondary;
+          font-size: 1.2rem;
+          cursor: pointer;
+          padding: $spacing-xs;
+          border-radius: 50%;
+          transition: all 0.2s ease;
+          
+          &:hover {
+            background: rgba($danger-color, 0.1);
+            color: $danger-color;
+          }
+        }
+      }
+    }
+    
+    .search-info {
+      margin-top: $spacing-sm;
+      text-align: center;
+      
+      .search-results-count {
+        color: $text-secondary;
+        font-size: 0.9rem;
+        font-style: italic;
+      }
+    }
+  }
+}
+
+// Estado de nenhum resultado
+.no-results-state {
+  text-align: center;
+  padding: $spacing-xxl;
+  
+  .no-results-icon {
+    font-size: 4rem;
+    opacity: 0.5;
+    margin-bottom: $spacing-lg;
+  }
+  
+  h3 {
+    color: $dark-color;
+    margin-bottom: $spacing-md;
+    font-size: 1.5rem;
+  }
+  
+  p {
+    color: $text-secondary;
+    margin-bottom: $spacing-xl;
+    font-size: 1.1rem;
+  }
+  
+  .btn {
+    padding: $spacing-md $spacing-xl;
+    border-radius: 8px;
+    border: none;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+    
+    &.btn-primary {
+      background: $primary-color;
+      color: white;
+      
+      &:hover {
+        background: color.adjust($primary-color, $lightness: -10%);
+        transform: translateY(-2px);
+      }
+    }
+  }
+}
+
+// Animação de rotação
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// Header do mostruário
+.showcase-header {
+  text-align: center;
+  margin-bottom: $spacing-xxl;
+  
+  h1 {
+    font-size: 3rem;
+    font-weight: 700;
+    color: $dark-color;
+    margin-bottom: $spacing-lg;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    
+    @media (max-width: 768px) {
+      font-size: 2.5rem;
+    }
+    
+    @media (max-width: 480px) {
+      font-size: 2rem;
+    }
+  }
+  
+  .page-info {
+    font-size: 1.1rem;
+    color: $text-secondary;
+    font-weight: 500;
+    margin-bottom: $spacing-lg;
+    
+    @media (max-width: 480px) {
+      font-size: 1rem;
+    }
+  }
+
+  // Controles de teste do Supabase
+  .supabase-controls {
+    display: flex;
+    gap: $spacing-sm;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: $spacing-lg;
+    
+    .test-button {
+      background: linear-gradient(135deg, $primary-color, color.adjust($primary-color, $lightness: 10%));
+      color: white;
+      border: none;
+      padding: $spacing-sm $spacing-md;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+      }
+      
+      &:active {
+        transform: translateY(0);
+      }
+    }
+    
+    .loading-indicator {
+      color: $primary-color;
+      font-weight: 500;
+      animation: pulse 1.5s infinite;
+    }
+    
+    .error-indicator {
+      color: $danger-color;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+    
+    @media (max-width: 768px) {
+      .test-button {
+        font-size: 0.8rem;
+        padding: $spacing-xs $spacing-sm;
+      }
+    }
+  }
+}
+
+// Container do mostruário
+.anime-showcase {
+  max-width: 1600px;
+  margin: 0 auto $spacing-xxl;
+  padding: 0 $spacing-md;
+}
+
+// Grid de animes
+.anime-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: $spacing-md;
+  padding: 0;
+  
+  @media (max-width: 1400px) {
+    grid-template-columns: repeat(8, 1fr);
+    gap: $spacing-sm;
+  }
+  
+  @media (max-width: 1200px) {
+    grid-template-columns: repeat(6, 1fr);
+    gap: $spacing-sm;
+  }
+  
+  @media (max-width: 900px) {
+    grid-template-columns: repeat(4, 1fr);
+    gap: $spacing-xs;
+  }
+  
+  @media (max-width: 600px) {
+    grid-template-columns: repeat(3, 1fr);
+    gap: $spacing-xs;
+  }
+  
+  @media (max-width: 480px) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: $spacing-xs;
+  }
+}
+
+// Card individual do anime
+.anime-card {
+  background: $card-background;
+  border: 1px solid $border-color;
+  border-radius: 12px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  width: 100%;
+  cursor: pointer;
+  
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+    border-color: #555;
+  }
+}
+
+// Container da imagem
+.anime-image {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  overflow: hidden;
+  
+  @media (max-width: 1400px) {
+    height: 180px;
+  }
+  
+  @media (max-width: 1200px) {
+    height: 160px;
+  }
+  
+  @media (max-width: 900px) {
+    height: 140px;
+  }
+  
+  @media (max-width: 600px) {
+    height: 120px;
+  }
+  
+  @media (max-width: 480px) {
+    height: 160px;
+  }
+  
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+  }
+  
+  &:hover img {
+    transform: scale(1.05);
+  }
+}
+
+// Overlay com informações sobre a imagem
+.anime-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.4) 0%, transparent 50%, rgba(0, 0, 0, 0.8) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: $spacing-md;
+  
+  .anime-card:hover & {
+    opacity: 1;
+  }
+}
+
+// Rating do anime
+.anime-rating {
+  align-self: flex-start;
+  background: rgba(255, 193, 7, 0.9);
+  color: white;
+  padding: 2px $spacing-xs;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.7rem;
+  backdrop-filter: blur(4px);
+  
+  span {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+}
+
+// Status do anime
+.anime-status {
+  align-self: flex-end;
+  padding: $spacing-xs $spacing-sm;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  backdrop-filter: blur(4px);
+  
+  &.concluído {
+    background: rgba(40, 167, 69, 0.9);
+    color: white;
+  }
+  
+  &.em-andamento {
+    background: rgba(0, 123, 255, 0.9);
+    color: white;
+  }
+  
+  &.pausado {
+    background: rgba(108, 117, 125, 0.9);
+    color: white;
+  }
+}
+
+// Conteúdo do card
+.anime-content {
+  padding: $spacing-sm;
+}
+
+// Título do anime
+.anime-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: $dark-color;
+  margin-bottom: 0;
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-align: center;
+  
+  @media (max-width: 1400px) {
+    font-size: 0.85rem;
+  }
+  
+  @media (max-width: 1200px) {
+    font-size: 0.8rem;
+  }
+  
+  @media (max-width: 900px) {
+    font-size: 0.75rem;
+  }
+  
+  @media (max-width: 480px) {
+    font-size: 0.85rem;
+  }
+}
+
+// Descrição do anime
+.anime-description {
+  color: $secondary-color;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin-bottom: $spacing-md;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  
+  @media (max-width: 480px) {
+    font-size: 0.9rem;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+}
+
+// Metadados do anime
+.anime-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-sm;
+  
+  span {
+    background: $light-color;
+    color: $dark-color;
+    padding: $spacing-xs $spacing-sm;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border: 1px solid $border-color;
+    
+    @media (max-width: 480px) {
+      font-size: 0.75rem;
+      padding: 2px $spacing-xs;
+    }
+  }
+  
+  .anime-year {
+    background: rgba(0, 123, 255, 0.1);
+    color: $primary-color;
+    border-color: rgba(0, 123, 255, 0.3);
+  }
+  
+  .anime-genre {
+    background: rgba(40, 167, 69, 0.1);
+    color: $success-color;
+    border-color: rgba(40, 167, 69, 0.3);
+  }
+  
+  .anime-episodes {
+    background: rgba(255, 193, 7, 0.1);
+    color: #e67e22;
+    border-color: rgba(255, 193, 7, 0.3);
+  }
+}
+
+// Informações extras do anime
+.anime-extra-info {
+  margin-top: $spacing-sm;
+  padding-top: $spacing-sm;
+  border-top: 1px solid $border-color;
+  
+  .anime-rating-text {
+    color: #f39c12;
+    font-weight: 600;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+  }
+}
+
+// Estado de carregamento
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-xxl;
+  
+  .loading-spinner {
+    width: 60px;
+    height: 60px;
+    border: 4px solid $border-color;
+    border-top: 4px solid $primary-color;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: $spacing-lg;
+  }
+  
+  p {
+    color: $text-secondary;
+    font-size: 1.1rem;
+    font-weight: 500;
+  }
+}
+
+// Container da paginação
+.pagination-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-lg;
+  margin-top: $spacing-xxl;
+  
+  @media (max-width: 768px) {
+    gap: $spacing-md;
+  }
+}
+
+// Controles de paginação
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  background: $card-background;
+  border: 1px solid $border-color;
+  padding: $spacing-sm;
+  border-radius: 50px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  
+  @media (max-width: 480px) {
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: $spacing-sm;
+    gap: 2px;
+  }
+}
+
+// Botões de paginação
+.pagination-button {
+  background: transparent;
+  border: none;
+  padding: $spacing-sm $spacing-md;
+  border-radius: 25px;
+  font-weight: 600;
+  color: $text-secondary;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  @media (max-width: 480px) {
+    padding: $spacing-xs $spacing-sm;
+    min-width: 36px;
+    height: 36px;
+    font-size: 0.85rem;
+  }
+  
+  &:hover:not(:disabled) {
+    background: rgba(0, 123, 255, 0.2);
+    color: $primary-color;
+    transform: translateY(-1px);
+  }
+  
+  &.active {
+    background: $primary-color;
+    color: white;
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.4);
+  }
+  
+  &:disabled {
+    color: #666;
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}
+
+// Informações da paginação
+.pagination-info {
+  color: $text-secondary;
+  font-weight: 500;
+  font-size: 1rem;
+  
+  @media (max-width: 480px) {
+    font-size: 0.9rem;
+    text-align: center;
+  }
+}
+
+// Animação de rotação para o spinner
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+// Animação de pulse para loading
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+// Responsividade adicional para telas muito pequenas
+@media (max-width: 360px) {
+  .anime-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .anime-card {
+    max-width: 280px;
+    margin: 0 auto;
+  }
+}
+
+// ===== ESTILOS PARA EXPANSÃO DE EPISÓDIOS =====
+
+.anime-card {
+  position: relative;
+  
+  &.expanded {
+    z-index: 10;
+  }
+}
+
+// Painel de episódios expandido
+.episodes-panel {
+  position: absolute;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #3a3a3a 0%, #2d2d2d 100%);
+  border: 2px solid $primary-color;
+  border-radius: 12px;
+  overflow: hidden;
+  animation: expandPanel 0.3s ease-out;
+  z-index: 100;
+  
+  // Expansão para a direita
+  &.expand-right {
+    transform-origin: left center;
+  }
+  
+  // Expansão para a esquerda
+  &.expand-left {
+    transform-origin: right center;
+  }
+}
+
+// Header do painel de episódios
+.episodes-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: $spacing-sm;
+  background: linear-gradient(90deg, $primary-color, color.adjust($primary-color, $lightness: 10%));
+  color: white;
+  
+  h4 {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 70%;
+  }
+  
+  .close-button {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    transition: background-color 0.2s ease;
+    
+    &:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+  }
+}
+
+// Grid de episódios
+.episodes-grid {
+  padding: $spacing-xs;
+  height: calc(100% - 40px);
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2px;
+  
+  /* Scrollbar personalizado */
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: $primary-color;
+    border-radius: 2px;
+  }
+}
+
+// Item de episódio
+.episode-item {
+  display: flex;
+  align-items: center;
+  padding: 4px 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: $primary-color;
+  }
+  
+  &.watched {
+    background: rgba(40, 167, 69, 0.2);
+    border-color: $success-color;
+    
+    .episode-number {
+      background: $success-color;
+      color: white;
+    }
+  }
+}
+
+// Número do episódio
+.episode-number {
+  background: $primary-color;
+  color: white;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+
+// Informações do episódio
+.episode-info {
+  flex: 1;
+  min-width: 0;
+  
+  .episode-title {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: $dark-color;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+  }
+  
+  .episode-duration {
+    font-size: 0.6rem;
+    color: $text-secondary;
+    line-height: 1;
+  }
+}
+
+// Ações do episódio
+.episode-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  margin-left: 4px;
+}
+
+// Botão de assistir
+.watch-btn {
+  background: $primary-color;
+  border: none;
+  color: white;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: color.adjust($primary-color, $lightness: 10%);
+    transform: scale(1.05);
+  }
+  
+  svg {
+    width: 12px;
+    height: 12px;
+  }
+}
+
+// Toggle de assistido
+.watched-toggle {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+  
+  &.watched {
+    background: $success-color;
+    border-color: $success-color;
+    color: white;
+    
+    &:hover {
+      background: color.adjust($success-color, $lightness: 10%);
+    }
+  }
+  
+  svg {
+    width: 10px;
+    height: 10px;
+  }
+}
+
+// Indicador de assistido
+.watched-indicator {
+  color: $success-color;
+  font-size: 0.8rem;
+  font-weight: bold;
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+
+// Animação de expansão
+@keyframes expandPanel {
+  from {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+  to {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+// Responsividade para o painel de episódios
+@media (max-width: 1200px) {
+  .episodes-header h4 { font-size: 0.8rem; }
+  .episode-number { width: 18px; height: 18px; font-size: 0.65rem; }
+  .episode-info .episode-title { font-size: 0.65rem; }
+  .episode-info .episode-duration { font-size: 0.55rem; }
+}
+
+@media (max-width: 900px) {
+  .episodes-header { padding: 4px; h4 { font-size: 0.75rem; } }
+  .close-button { width: 20px; height: 20px; font-size: 0.7rem; }
+  .episode-number { width: 16px; height: 16px; font-size: 0.6rem; }
+  .episode-info .episode-title { font-size: 0.6rem; }
+  .episode-info .episode-duration { font-size: 0.5rem; }
+}

@@ -1,0 +1,135 @@
+<div class="episode-player-container">
+  @if (isLoading()) {
+    <div class="loading-state">
+      <div class="loading-spinner"></div>
+      <p>Carregando episódio...</p>
+    </div>
+  } @else if (error()) {
+    <div class="error-state">
+      <div class="error-icon">⚠️</div>
+      <h2>Erro ao carregar episódio</h2>
+      <p>{{ error() }}</p>
+      <div class="error-actions">
+        <button class="btn btn-primary" (click)="goHome()">Voltar ao Início</button>
+        <button class="btn btn-secondary" (click)="navigateToAnime()">Voltar ao Anime</button>
+      </div>
+    </div>
+  } @else {
+    <!-- Header com informações do episódio -->
+    <header class="player-header">
+      <div class="breadcrumb">
+        <button class="breadcrumb-btn" (click)="goHome()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+          </svg>
+          Início
+        </button>
+        <span class="separator">›</span>
+        <button class="breadcrumb-btn" (click)="navigateToAnime()">
+          {{ currentAnime()?.titulo }}
+        </button>
+        <span class="separator">›</span>
+        <span class="current">Episódio {{ currentEpisode()?.numero }}</span>
+      </div>
+
+      <div class="episode-info">
+        <h1 class="episode-title">
+          {{ currentAnime()?.titulo }} - Episódio {{ currentEpisode()?.numero }}
+        </h1>
+        @if (currentAnime()?.status) {
+          <span class="anime-status">{{ currentAnime()?.status }}</span>
+        }
+      </div>
+
+      <div class="player-controls">
+        <button 
+          class="btn btn-secondary" 
+          (click)="toggleFullscreen()"
+          title="Tela cheia">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Player de vídeo em modo cinema -->
+    <main class="video-container">
+      @if (safeVideoUrl()) {
+        <iframe 
+          [src]="safeVideoUrl()"
+          frameborder="0"
+          allowfullscreen
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          class="video-player">
+        </iframe>
+      } @else {
+        <div class="no-video">
+          <div class="no-video-icon">📹</div>
+          <h3>Vídeo não disponível</h3>
+          <p>O link do vídeo não foi encontrado para este episódio.</p>
+        </div>
+      }
+    </main>
+
+    <!-- Navegação entre episódios -->
+    <nav class="episode-navigation">
+      <button 
+        class="nav-btn prev-btn"
+        [disabled]="!hasPreviousEpisode()"
+        (click)="goToPreviousEpisode()"
+        [title]="hasPreviousEpisode() ? 'Episódio anterior: ' + previousEpisode()?.numero : 'Não há episódio anterior'">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+        </svg>
+        <div class="nav-info">
+          @if (hasPreviousEpisode()) {
+            <span class="nav-label">Anterior</span>
+            <span class="nav-episode">Episódio {{ previousEpisode()?.numero }}</span>
+          } @else {
+            <span class="nav-label">Primeiro episódio</span>
+          }
+        </div>
+      </button>
+
+      <div class="current-episode-info">
+        <span class="current-label">Episódio Atual</span>
+        <span class="current-number">{{ currentEpisode()?.numero }}</span>
+        <span class="total-episodes">de {{ allEpisodes().length }}</span>
+      </div>
+
+      <button 
+        class="nav-btn next-btn"
+        [disabled]="!hasNextEpisode()"
+        (click)="goToNextEpisode()"
+        [title]="hasNextEpisode() ? 'Próximo episódio: ' + nextEpisode()?.numero : 'Não há próximo episódio'">
+        <div class="nav-info">
+          @if (hasNextEpisode()) {
+            <span class="nav-label">Próximo</span>
+            <span class="nav-episode">Episódio {{ nextEpisode()?.numero }}</span>
+          } @else {
+            <span class="nav-label">Último episódio</span>
+          }
+        </div>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+        </svg>
+      </button>
+    </nav>
+
+    <!-- Informações adicionais -->
+    <footer class="player-footer">
+      <div class="episode-meta">
+        @if (currentAnime()?.criado_em) {
+          <span class="meta-item">
+            Adicionado em {{ currentAnime()?.criado_em | date:'dd/MM/yyyy' }}
+          </span>
+        }
+        @if (currentAnime()?.dublado !== null) {
+          <span class="meta-item">
+            {{ currentAnime()?.dublado ? 'Dublado' : 'Legendado' }}
+          </span>
+        }
+      </div>
+    </footer>
+  }
