@@ -44,7 +44,7 @@ export class SupabaseService {
         .from('animes')
         .select('*', { count: 'exact' })
         .range(from_index, to_index)
-        .order('titulo', { ascending: true })
+        .order('atualizado_em', { ascending: false })
     ).pipe(
       map(({ data, error, count }) => {
         this.isLoading.set(false);
