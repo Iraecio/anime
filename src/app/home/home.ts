@@ -1,7 +1,11 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { SupabaseAnime, SupabaseEpisode, SupabaseService } from '../services/supabase.service';
+import {
+  SupabaseAnimeWithEpisodes,
+  SupabaseEpisode,
+  SupabaseService,
+} from '../services/supabase.service';
 import { EpisodeService } from '../services/episode.service';
 
 @Component({
@@ -18,35 +22,38 @@ export class Home implements OnInit {
 
   // Estados para o mostruário do Supabase
   isLoading = signal(false);
-  animes = signal<SupabaseAnime[]>([]);
+  animes = signal<SupabaseAnimeWithEpisodes[]>([]);
   totalAnimes = signal(0);
   currentPage = signal(1);
   perPage = signal(50);
-  
+
   // Estados para busca
   searchQuery = signal('');
   isSearching = signal(false);
   searchTimeout: any = null;
-  
+
   // Estados para expansão
   expandedAnimeId = signal<number | null>(null);
   expandedEpisodes = signal<SupabaseEpisode[]>([]);
-  expandedAnime = signal<SupabaseAnime | null>(null);
+  expandedAnime = signal<SupabaseAnimeWithEpisodes | null>(null);
   expandDirection = signal<'left' | 'right'>('right');
-  
+
   // Computed properties para paginação
   totalPages = computed(() => Math.ceil(this.totalAnimes() / this.perPage()));
-  
+
   // Computed para verificar se está em modo de busca
   isInSearchMode = computed(() => this.searchQuery().trim().length > 0);
-  
+
   // Computed para mostrar estado de loading (normal ou busca)
   showLoading = computed(() => this.isLoading() || this.isSearching());
-  
+
   // Computed para informações de paginação
   pageInfo = computed(() => {
     const start = (this.currentPage() - 1) * this.perPage() + 1;
-    const end = Math.min(this.currentPage() * this.perPage(), this.totalAnimes());
+    const end = Math.min(
+      this.currentPage() * this.perPage(),
+      this.totalAnimes()
+    );
     return { start, end, total: this.totalAnimes() };
   });
 
@@ -56,7 +63,7 @@ export class Home implements OnInit {
     total: this.totalAnimes(),
     page: this.currentPage(),
     perPage: this.perPage(),
-    totalPages: this.totalPages()
+    totalPages: this.totalPages(),
   }));
 
   // Array para mostrar os números das páginas na navegação
@@ -64,10 +71,10 @@ export class Home implements OnInit {
     const total = this.totalPages();
     const current = this.currentPage();
     const delta = 2; // Quantas páginas mostrar antes e depois da atual
-    
+
     let start = Math.max(1, current - delta);
     let end = Math.min(total, current + delta);
-    
+
     // Ajusta para sempre mostrar pelo menos 5 páginas quando possível
     if (end - start < 4) {
       if (start === 1) {
@@ -76,7 +83,7 @@ export class Home implements OnInit {
         start = Math.max(1, end - 4);
       }
     }
-    
+
     const pages = [];
     for (let i = start; i <= end; i++) {
       pages.push(i);
@@ -92,23 +99,25 @@ export class Home implements OnInit {
   // Carrega animes do Supabase
   private loadAnimes(): void {
     this.isLoading.set(true);
-    this.supabaseService.getAnimes(this.currentPage(), this.perPage()).subscribe({
-      next: (result) => {
-        this.animes.set(result.data);
-        this.totalAnimes.set(result.total);
-        this.isLoading.set(false);
-      },
-      error: (error) => {
-        console.error('Erro ao carregar animes:', error);
-        this.isLoading.set(false);
-      }
-    });
+    this.supabaseService
+      .getAnimes(this.currentPage(), this.perPage())
+      .subscribe({
+        next: (result) => {
+          this.animes.set(result.data);
+          this.totalAnimes.set(result.total);
+          this.isLoading.set(false);
+        },
+        error: (error) => {
+          console.error('Erro ao carregar animes:', error);
+          this.isLoading.set(false);
+        },
+      });
   }
 
   // Busca animes por título
   private searchAnimes(): void {
     const query = this.searchQuery().trim();
-    
+
     if (query.length === 0) {
       // Se a busca estiver vazia, carrega animes normalmente
       this.loadAnimes();
@@ -116,17 +125,19 @@ export class Home implements OnInit {
     }
 
     this.isSearching.set(true);
-    this.supabaseService.searchAnimes(query, this.currentPage(), this.perPage()).subscribe({
-      next: (result) => {
-        this.animes.set(result.data);
-        this.totalAnimes.set(result.total);
-        this.isSearching.set(false);
-      },
-      error: (error) => {
-        console.error('Erro ao buscar animes:', error);
-        this.isSearching.set(false);
-      }
-    });
+    this.supabaseService
+      .searchAnimes(query, this.currentPage(), this.perPage())
+      .subscribe({
+        next: (result) => {
+          this.animes.set(result.data);
+          this.totalAnimes.set(result.total);
+          this.isSearching.set(false);
+        },
+        error: (error) => {
+          console.error('Erro ao buscar animes:', error);
+          this.isSearching.set(false);
+        },
+      });
   }
 
   // Método chamado quando o usuário digita na busca
@@ -171,14 +182,14 @@ export class Home implements OnInit {
 
   nextPage(): void {
     if (this.currentPage() < this.totalPages()) {
-      this.currentPage.update(page => page + 1);
+      this.currentPage.update((page) => page + 1);
       this.loadCurrentData();
     }
   }
 
   previousPage(): void {
     if (this.currentPage() > 1) {
-      this.currentPage.update(page => page - 1);
+      this.currentPage.update((page) => page - 1);
       this.loadCurrentData();
     }
   }
@@ -203,9 +214,9 @@ export class Home implements OnInit {
   }
 
   // Método para expandir/colapsar anime
-  toggleAnimeExpansion(anime: SupabaseAnime, index: number): void {
+  toggleAnimeExpansion(anime: SupabaseAnimeWithEpisodes, index: number): void {
     const currentExpanded = this.expandedAnimeId();
-    
+
     if (currentExpanded === anime.id) {
       // Se já está expandido, colapsa
       this.expandedAnimeId.set(null);
@@ -215,22 +226,15 @@ export class Home implements OnInit {
       // Expande o anime
       this.expandedAnimeId.set(anime.id);
       this.expandedAnime.set(anime);
-      
+
       // Determina direção da expansão baseado na posição na grid (10 por linha)
       const positionInRow = index % 10;
       const direction = positionInRow >= 7 ? 'left' : 'right'; // Se está nas últimas 3 posições, expande para esquerda
       this.expandDirection.set(direction);
-      
+
       // Carrega episódios do Supabase
-      this.supabaseService.getEpisodesByAnimeId(anime.id).subscribe({
-        next: (episodes) => {
-          this.expandedEpisodes.set(episodes);
-        },
-        error: (error) => {
-          console.error('Erro ao carregar episódios:', error);
-          this.expandedEpisodes.set([]);
-        }
-      });
+      this.expandedEpisodes.set(anime['episodios'] || []); // Usa episódios já carregados se disponíveis
+       
     }
   }
 

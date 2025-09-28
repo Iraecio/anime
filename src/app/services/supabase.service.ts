@@ -6,6 +6,9 @@ import { Observable, from, map, catchError, of } from 'rxjs';
 
 export type SupabaseAnime = Database['public']['Tables']['animes']['Row'];
 export type SupabaseEpisode = Database['public']['Tables']['episodios']['Row'];
+export type SupabaseAnimeWithEpisodes = SupabaseAnime & {
+  episodios: SupabaseEpisode[];
+};
 
 @Injectable({
   providedIn: 'root',
@@ -32,7 +35,7 @@ export class SupabaseService {
   getAnimes(
     page: number = 1,
     limit: number = 50
-  ): Observable<{ data: SupabaseAnime[]; total: number }> {
+  ): Observable<{ data: SupabaseAnimeWithEpisodes[]; total: number }> {
     this.isLoading.set(true);
     this.error.set(null);
 
@@ -42,9 +45,16 @@ export class SupabaseService {
     return from(
       this.supabase
         .from('animes')
-        .select('*', { count: 'exact' })
-        .range(from_index, to_index)
-        .order('atualizado_em', { ascending: false })
+        .select(
+          `
+          *,
+          episodios!inner(*)
+        `,
+          { count: 'exact' }
+        )
+        .range(from_index, to_index) 
+        .order('criado_em', { referencedTable: 'episodios', ascending: false })
+        .order('numero', { referencedTable: 'episodios', ascending: false })
     ).pipe(
       map(({ data, error, count }) => {
         this.isLoading.set(false);
@@ -53,7 +63,6 @@ export class SupabaseService {
           this.error.set(error.message);
           throw new Error(error.message);
         }
-console.log(data[0]);
         return { data: data, total: count || 0 };
       }),
       catchError((error) => {
@@ -68,12 +77,12 @@ console.log(data[0]);
   /**
    * Busca um anime específico por ID
    */
-  getAnimeById(id: number): Observable<SupabaseAnime | null> {
+  getAnimeById(id: number): Observable<SupabaseAnimeWithEpisodes | null> {
     this.isLoading.set(true);
     this.error.set(null);
 
     return from(
-      this.supabase.from('animes').select('*').eq('id', id).single()
+      this.supabase.from('animes').select('*, episodios(*)').eq('id', id).single()
     ).pipe(
       map(({ data, error }) => {
         this.isLoading.set(false);
@@ -101,7 +110,7 @@ console.log(data[0]);
     query: string,
     page: number = 1,
     limit: number = 50
-  ): Observable<{ data: SupabaseAnime[]; total: number }> {
+  ): Observable<{ data: SupabaseAnimeWithEpisodes[]; total: number }> {
     this.isLoading.set(true);
     this.error.set(null);
 
@@ -111,10 +120,17 @@ console.log(data[0]);
     return from(
       this.supabase
         .from('animes')
-        .select('*', { count: 'exact' })
+        .select(
+          `
+          *,
+          episodios!inner(*)
+        `,
+          { count: 'exact' }
+        )
         .ilike('titulo', `%${query}%`)
         .range(from_index, to_index)
-        .order('titulo', { ascending: true })
+        .order('criado_em', { referencedTable: 'episodios', ascending: false })
+        .order('numero', { referencedTable: 'episodios', ascending: false })
     ).pipe(
       map(({ data, error, count }) => {
         this.isLoading.set(false);
@@ -198,7 +214,7 @@ console.log(data[0]);
       })
     );
   }
- 
+
   // ===== MÉTODOS UTILITÁRIOS =====
 
   /**
