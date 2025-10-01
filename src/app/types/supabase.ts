@@ -83,11 +83,32 @@ export type Database = {
             referencedRelation: "animes"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "episodios_anime_id_fkey"
+            columns: ["anime_id"]
+            isOneToOne: false
+            referencedRelation: "animes_with_latest_episode"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
     Views: {
-      [_ in never]: never
+      animes_with_latest_episode: {
+        Row: {
+          atualizado_em: string | null
+          criado_em: string | null
+          dublado: boolean | null
+          id: number | null
+          link_original: string | null
+          slug: string | null
+          status: string | null
+          thumb: string | null
+          titulo: string | null
+          ultimo_episodio_criado_em: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never

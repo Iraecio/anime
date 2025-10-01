@@ -2,7 +2,7 @@ import { Injectable, signal } from '@angular/core';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { environment } from '../../environments/environment';
 import { Database } from '../types/supabase';
-import { Observable, from, map, catchError, of } from 'rxjs';
+import { Observable, from, map, catchError, of, switchMap } from 'rxjs';
 
 export type SupabaseAnime = Database['public']['Tables']['animes']['Row'];
 export type SupabaseEpisode = Database['public']['Tables']['episodios']['Row'];
@@ -44,26 +44,76 @@ export class SupabaseService {
 
     return from(
       this.supabase
-        .from('animes')
-        .select(
-          `
-          *,
-          episodios!inner(*)
-        `,
-          { count: 'exact' }
-        )
-        .range(from_index, to_index) 
-        .order('criado_em', { referencedTable: 'episodios', ascending: false })
-        .order('numero', { referencedTable: 'episodios', ascending: false })
+        .from('animes_with_latest_episode')
+        .select('*', { count: 'exact' })
+        .range(from_index, to_index)
+        .order('ultimo_episodio_criado_em', {
+          ascending: false,
+          nullsFirst: false,
+        })
+        .order('criado_em', { ascending: false })
     ).pipe(
-      map(({ data, error, count }) => {
-        this.isLoading.set(false);
-
-        if (error) {
-          this.error.set(error.message);
-          throw new Error(error.message);
+      switchMap(({ data: animesData, error: animesError, count }) => {
+        if (animesError) {
+          throw new Error(animesError.message);
         }
-        return { data: data, total: count || 0 };
+
+        if (!animesData || animesData.length === 0) {
+          return of({ data: [], total: count || 0 });
+        }
+
+        // Buscar episódios para cada anime
+        const animeIds = animesData
+          .map((anime) => anime.id)
+          .filter((id): id is number => id !== null && id !== undefined);
+
+        return from(
+          this.supabase
+            .from('episodios')
+            .select('*')
+            .in('anime_id', animeIds)
+            .order('numero', { ascending: true })
+        ).pipe(
+          map(({ data: episodiosData, error: episodiosError }) => {
+            if (episodiosError) {
+              throw new Error(episodiosError.message);
+            }
+
+            // Agrupar episódios por anime
+            const episodiosPorAnime = (episodiosData || []).reduce(
+              (acc, episodio) => {
+                if (!acc[episodio.anime_id]) {
+                  acc[episodio.anime_id] = [];
+                }
+                acc[episodio.anime_id].push(episodio);
+                return acc;
+              },
+              {} as Record<number, SupabaseEpisode[]>
+            );
+
+            // Combinar animes com seus episódios, garantindo que campos obrigatórios não sejam nulos
+            const animesWithEpisodes: any[] = (animesData || [])
+              .filter(
+                (anime) =>
+                  anime.id !== null &&
+                  typeof anime.id === 'number' &&
+                  anime.titulo !== null &&
+                  typeof anime.titulo === 'string' &&
+                  anime.link_original !== null &&
+                  typeof anime.link_original === 'string'
+              )
+              .map((anime) => ({
+                ...anime,
+                episodios: episodiosPorAnime[anime.id!] || [],
+              }));
+
+            return { data: animesWithEpisodes, total: count || 0 };
+          })
+        );
+      }),
+      map((result) => {
+        this.isLoading.set(false);
+        return result;
       }),
       catchError((error) => {
         this.isLoading.set(false);
@@ -82,7 +132,11 @@ export class SupabaseService {
     this.error.set(null);
 
     return from(
-      this.supabase.from('animes').select('*, episodios(*)').eq('id', id).single()
+      this.supabase
+        .from('animes')
+        .select('*, episodios(*)')
+        .eq('id', id)
+        .single()
     ).pipe(
       map(({ data, error }) => {
         this.isLoading.set(false);
@@ -119,28 +173,77 @@ export class SupabaseService {
 
     return from(
       this.supabase
-        .from('animes')
-        .select(
-          `
-          *,
-          episodios!inner(*)
-        `,
-          { count: 'exact' }
-        )
+        .from('animes_with_latest_episode')
+        .select('*', { count: 'exact' })
         .ilike('titulo', `%${query}%`)
         .range(from_index, to_index)
-        .order('criado_em', { referencedTable: 'episodios', ascending: false })
-        .order('numero', { referencedTable: 'episodios', ascending: false })
+        .order('ultimo_episodio_criado_em', {
+          ascending: false,
+          nullsFirst: false,
+        })
+        .order('criado_em', { ascending: false })
     ).pipe(
-      map(({ data, error, count }) => {
-        this.isLoading.set(false);
-
-        if (error) {
-          this.error.set(error.message);
-          throw new Error(error.message);
+      switchMap(({ data: animesData, error: animesError, count }) => {
+        if (animesError) {
+          throw new Error(animesError.message);
         }
 
-        return { data: data, total: count || 0 };
+        if (!animesData || animesData.length === 0) {
+          return of({ data: [], total: count || 0 });
+        }
+
+        // Buscar episódios para cada anime
+        const animeIds = animesData
+          .map((anime) => anime.id)
+          .filter((id): id is number => id !== null && id !== undefined);
+
+        return from(
+          this.supabase
+            .from('episodios')
+            .select('*')
+            .in('anime_id', animeIds)
+            .order('numero', { ascending: true })
+        ).pipe(
+          map(({ data: episodiosData, error: episodiosError }) => {
+            if (episodiosError) {
+              throw new Error(episodiosError.message);
+            }
+
+            // Agrupar episódios por anime
+            const episodiosPorAnime = (episodiosData || []).reduce(
+              (acc, episodio) => {
+                if (!acc[episodio.anime_id]) {
+                  acc[episodio.anime_id] = [];
+                }
+                acc[episodio.anime_id].push(episodio);
+                return acc;
+              },
+              {} as Record<number, SupabaseEpisode[]>
+            );
+
+            // Combinar animes com seus episódios
+            const animesWithEpisodes: any[] = (animesData || [])
+              .filter(
+                (anime) =>
+                  anime.id !== null &&
+                  typeof anime.id === 'number' &&
+                  anime.titulo !== null &&
+                  typeof anime.titulo === 'string' &&
+                  anime.link_original !== null &&
+                  typeof anime.link_original === 'string'
+              )
+              .map((anime) => ({
+                ...anime,
+                episodios: episodiosPorAnime[anime.id!] || [],
+              }));
+
+            return { data: animesWithEpisodes, total: count || 0 };
+          })
+        );
+      }),
+      map((result) => {
+        this.isLoading.set(false);
+        return result;
       }),
       catchError((error) => {
         this.isLoading.set(false);
@@ -214,65 +317,6 @@ export class SupabaseService {
       })
     );
   }
-
-  // ===== MÉTODOS UTILITÁRIOS =====
-
-  /**
-   * Gera rating fictício (pode ser substituído por dados reais no futuro)
-   */
-  private generateRating(): number {
-    return Math.round((Math.random() * 2 + 8) * 10) / 10; // Entre 8.0 e 10.0
-  }
-
-  /**
-   * Extrai ano de uma data string
-   */
-  private extractYearFromDate(dateString: string | null): number {
-    if (!dateString) return new Date().getFullYear();
-    return new Date(dateString).getFullYear();
-  }
-
-  /**
-   * Mapeia status do banco para formato padronizado
-   */
-  private mapStatus(
-    status: string | null
-  ): 'completed' | 'ongoing' | 'upcoming' {
-    if (!status) return 'ongoing';
-
-    const statusLower = status.toLowerCase();
-    if (
-      statusLower.includes('completo') ||
-      statusLower.includes('finalizado')
-    ) {
-      return 'completed';
-    }
-    if (
-      statusLower.includes('em andamento') ||
-      statusLower.includes('ongoing')
-    ) {
-      return 'ongoing';
-    }
-    return 'upcoming';
-  }
-
-  /**
-   * Gera duração aleatória para episódios
-   */
-  private generateRandomDuration(): string {
-    const minutes = Math.floor(Math.random() * 10) + 20; // 20-30 minutos
-    return `${minutes}:00`;
-  }
-
-  /**
-   * Formata data para exibição
-   */
-  private formatDate(dateString: string | null): string {
-    if (!dateString) return new Date().toLocaleDateString('pt-BR');
-    return new Date(dateString).toLocaleDateString('pt-BR');
-  }
-
-  // ===== MÉTODOS DE ESTATÍSTICAS =====
 
   /**
    * Conta total de animes

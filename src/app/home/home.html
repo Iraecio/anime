@@ -1,172 +1,247 @@
-<div class="home-container">
+<div class="container-fluid bg-dark text-white min-vh-100 py-4">
   <!-- Barra de Busca -->
-  <div class="search-container">
-    <div class="search-box">
-      <div class="search-input-wrapper">
-        <input 
-          type="text" 
-          class="search-input"
-          placeholder="Buscar animes por título..."
-          [(ngModel)]="searchQuery"
-          (input)="onSearchInput()"
-          [disabled]="showLoading()"
-        >
-        <div class="search-icons">
-          @if (isSearching()) {
-            <div class="search-loading">🔄</div>
-          } @else if (searchQuery()) {
-            <button class="clear-search-btn" (click)="clearSearch()" title="Limpar busca">
-              ✕
-            </button>
-          } @else {
-            <div class="search-icon">🔍</div>
+  <div class="row justify-content-center mb-5">
+    <div class="col-lg-8 col-xl-6">
+      <div class="card bg-secondary border-0 shadow">
+        <div class="card-body">
+          <div class="input-group input-group-lg">
+            <input type="text" class="form-control border-0 bg-dark text-white"
+              placeholder="Buscar animes por título..." [(ngModel)]="searchQuery" (input)="onSearchInput()"
+              [disabled]="showLoading()">
+            <div class="input-group-text bg-dark border-0">
+              @if (isSearching()) {
+              <div class="spinner-border spinner-border-sm text-primary" role="status">
+                <span class="visually-hidden">Carregando...</span>
+              </div>
+              } @else if (searchQuery()) {
+              <button class="btn btn-sm btn-outline-danger border-0 p-1" (click)="clearSearch()" title="Limpar busca">
+                ✕
+              </button>
+              } @else {
+              <span class="text-muted">🔍</span>
+              }
+            </div>
+          </div>
+
+          @if (isInSearchMode()) {
+          <div class="mt-3 text-center">
+            <small class="text-muted ">
+              {{ totalAnimes() }} resultado{{ totalAnimes() !== 1 ? 's' : '' }}
+              para "<span class="text-info">{{ searchQuery() }}</span>"
+            </small>
+          </div>
           }
         </div>
       </div>
-      
-      @if (isInSearchMode()) {
-        <div class="search-info">
-          <span class="search-results-count">
-            {{ totalAnimes() }} resultado{{ totalAnimes() !== 1 ? 's' : '' }} 
-            para "{{ searchQuery() }}"
-          </span>
-        </div>
-      }
     </div>
   </div>
 
   <!-- Header do mostruário -->
-  <div class="showcase-header">
-    <h1>{{ isInSearchMode() ? 'Resultados da Busca' : 'Mostruário de Animes' }}</h1>
-    <div class="page-info">
-      <span>Mostrando {{ pageInfo().start }}-{{ pageInfo().end }} de {{ pageInfo().total }} {{ isInSearchMode() ? 'resultados' : 'animes' }}</span>
-    </div>
+  <div class="text-center mb-5">
+    <h1 class="display-4 fw-bold mb-3">
+      {{ isInSearchMode() ? 'Resultados da Busca' : 'Mostruário de Animes' }}
+    </h1>
+    <p class="lead text-white mb-4">
+      Mostrando {{ pageInfo().start }} - {{ pageInfo().end }} de {{ pageInfo().total }} {{ isInSearchMode() ? 'resultados'
+      : 'animes' }}
+    </p>
 
     @if (showLoading()) {
-    <div class="loading-indicator">🔄 {{ isInSearchMode() ? 'Buscando' : 'Carregando' }} animes...</div>
+    <div class="d-flex justify-content-center align-items-center">
+      <div class="spinner-border text-primary me-2" role="status">
+        <span class="visually-hidden">Carregando...</span>
+      </div>
+      <span class="text-primary">{{ isInSearchMode() ? 'Buscando' : 'Carregando' }} animes...</span>
+    </div>
     }
   </div>
 
   <!-- Grid de animes -->
-  <div class="anime-showcase">
+  <div class="row">
     @if (showLoading()) {
-    <div class="loading-state">
-      <div class="loading-spinner"></div>
-      <p>{{ isInSearchMode() ? 'Buscando' : 'Carregando' }} animes...</p>
+    <div class="col-12">
+      <div class="d-flex flex-column align-items-center justify-content-center py-5">
+        <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status">
+          <span class="visually-hidden">Carregando...</span>
+        </div>
+        <p class="h5 text-muted">{{ isInSearchMode() ? 'Buscando' : 'Carregando' }} animes...</p>
+      </div>
     </div>
     } @else if (animes().length === 0 && isInSearchMode()) {
-    <div class="no-results-state">
-      <div class="no-results-icon">🔍</div>
-      <h3>Nenhum anime encontrado</h3>
-      <p>Não encontramos animes com o termo "{{ searchQuery() }}"</p>
-      <button class="btn btn-primary" (click)="clearSearch()">
-        Ver todos os animes
-      </button>
+    <div class="col-12">
+      <div class="text-center py-5">
+        <div class="display-1 mb-4">🔍</div>
+        <h3 class="h2 mb-3">Nenhum anime encontrado</h3>
+        <p class="lead text-muted mb-4">Não encontramos animes com o termo "<span class="text-info">{{ searchQuery()
+            }}</span>"</p>
+        <button class="btn btn-primary btn-lg" (click)="clearSearch()">
+          ← Ver todos os animes
+        </button>
+      </div>
     </div>
     } @else {
-    <div class="anime-grid">
-      @for (anime of paginatedResult().data; track anime.id; let i = $index) {
-      <div class="anime-card" [class.expanded]="isAnimeExpanded(anime.id)" (click)="toggleAnimeExpansion(anime, i)">
-        <div class="anime-image">
-          <img [src]="anime.thumb" [alt]="anime.titulo" loading="lazy" />
-          <div class="anime-overlay">
-            @if (anime) {
-            <div class="anime-rating">
-              <span>★ {{ '9' }}</span>
+    @for (anime of paginatedResult().data; track anime.id; let i = $index) {
+    <div class="col-6 col-sm-4 col-md-3 col-lg-2 col-xl-2 mb-4">
+      <div class="card bg-secondary border-0 shadow anime-card h-100 position-relative"
+        [class.expanded]="isAnimeExpanded(anime.id)" (click)="toggleAnimeExpansion(anime, i)"
+        style="cursor: pointer; transition: transform 0.2s ease;" tabindex="0" role="button"
+        [attr.aria-expanded]="isAnimeExpanded(anime.id)" [attr.aria-label]="'Ver episódios de ' + anime.titulo"
+        (keydown.enter)="toggleAnimeExpansion(anime, i)"
+        (keydown.space)="toggleAnimeExpansion(anime, i); $event.preventDefault()">
+
+        <!-- Imagem do anime -->
+        <div class="position-relative overflow-hidden" style="height: 300px;">
+          <img [src]="anime.thumb" [alt]="anime.titulo" class="card-img-top h-100 w-100 object-fit-cover" loading="lazy"
+            onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNjY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iI2ZmZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlbSBOw6NvIEVuY29udHJhZGE8L3RleHQ+PC9zdmc+'" />
+
+          <!-- Overlay com rating -->
+          <div
+            class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column justify-content-between p-2 anime-overlay"
+            style="background: linear-gradient(180deg, rgba(0,0,0,0.4) 0%, transparent 50%, rgba(0,0,0,0.8) 100%); opacity: 0; transition: opacity 0.3s ease;">
+            <div class="align-self-start">
+              <span class="badge bg-warning text-dark">
+                ★ 9.0
+              </span>
             </div>
-            }
           </div>
-        </div>
-        <div class="anime-content">
-          <h3 class="anime-title">{{ anime.titulo }}</h3>
         </div>
 
-        <!-- Painel de expansão dos episódios -->
+        <!-- Título do anime -->
+        <div class="card-body p-3 text-center">
+          <h6 class="card-title text-white mb-0 fw-semibold lh-sm anime-title-clamp" [title]="anime.titulo">
+            {{ anime.titulo }}
+          </h6>
+        </div>
+
+        <!-- Painel de episódios (quando expandido) -->
         @if (isAnimeExpanded(anime.id)) {
-        <div class="episodes-panel" [class.expand-left]="expandDirection() === 'left'"
-          [class.expand-right]="expandDirection() === 'right'">
-          <div class="episodes-header">
-            <h4>{{ expandedAnime()?.titulo }}</h4>
-            <button class="close-button" (click)="closeExpansion(); $event.stopPropagation()">✕</button>
+        <div
+          class="position-absolute top-0 start-0 w-100 h-100 bg-dark border border-primary rounded episodes-panel shadow-lg"
+          [class.expand-left]="expandDirection() === 'left'" [class.expand-right]="expandDirection() === 'right'"
+          style="z-index: 1000; animation: expandPanel 0.3s ease-out;" role="dialog"
+          [attr.aria-label]="'Episódios de ' + expandedAnime()?.titulo">
+
+          <!-- Header do painel -->
+          <div class="d-flex justify-content-between align-items-center p-3 bg-primary text-white">
+            <h6 class="mb-0 fw-bold text-truncate me-2">{{ expandedAnime()?.titulo }}</h6>
+            <button class="btn btn-sm btn-outline-light border-0 p-1 rounded-circle"
+              (click)="closeExpansion(); $event.stopPropagation()" (keydown.escape)="closeExpansion()"
+              title="Fechar painel de episódios" aria-label="Fechar painel de episódios"
+              style="width: 32px; height: 32px;">
+              <i class="bi bi-x-lg"></i>
+            </button>
           </div>
-          <div class="episodes-grid">
+
+          <!-- Lista de episódios -->
+          <div class="p-2 overflow-auto" style="height: calc(100% - 56px); max-height: 100%;">
+            @if (expandedEpisodes().length === 0) {
+            <div class="text-center text-muted py-4">
+              <div class="mb-2">📺</div>
+              <small>Nenhum episódio disponível</small>
+            </div>
+            } @else {
             @for (episode of expandedEpisodes(); track episode.id) {
-            <div class="episode-item" [class.watched]="isEpisodeWatched(episode)">
-              <div class="episode-number">{{ episode.numero }}</div>
-              <div class="episode-info">
-                <div class="episode-title">Episódio {{ episode.numero }}</div>
-                <div class="episode-duration">{{ '24min' }}</div>
+            <div class="d-flex align-items-center p-2 mb-1 rounded episode-item border"
+              [class.bg-success]="isEpisodeWatched(episode)" [class.border-success]="isEpisodeWatched(episode)"
+              [class.bg-secondary]="!isEpisodeWatched(episode)" [class.border-secondary]="!isEpisodeWatched(episode)"
+              style="cursor: pointer; transition: all 0.2s ease; min-height: 50px;" tabindex="0" role="button"
+              (click)="playEpisode(episode)" (keydown.enter)="playEpisode(episode)"
+              (keydown.space)="playEpisode(episode); $event.preventDefault()"
+              [attr.aria-label]="'Assistir episódio ' + episode.numero + (isEpisodeWatched(episode) ? ' (já assistido)' : '')">
+
+              <!-- Número do episódio -->
+              <div class="badge me-2 flex-shrink-0" [class.bg-success]="isEpisodeWatched(episode)"
+                [class.bg-primary]="!isEpisodeWatched(episode)"
+                style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;">
+                {{ episode.numero }}
               </div>
-              <div class="episode-actions">
-                <button 
-                  class="watch-btn"
-                  (click)="playEpisode(episode); $event.stopPropagation()"
-                  title="Assistir episódio">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M8 5v14l11-7z"/>
-                  </svg>
-                </button>
-                <button 
-                  class="watched-toggle"
-                  (click)="toggleEpisodeWatched(episode); $event.stopPropagation()"
-                  [class.watched]="isEpisodeWatched(episode)"
-                  [title]="isEpisodeWatched(episode) ? 'Marcar como não assistido' : 'Marcar como assistido'">
+
+              <!-- Info do episódio -->
+              <div class="flex-grow-1 min-width-0">
+                <div class="fw-semibold text-white text-truncate d-flex align-items-center" style="font-size: 0.85rem;">
+                  <span>Ep. {{ episode.numero }}</span>
                   @if (isEpisodeWatched(episode)) {
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-                    </svg>
-                  } @else {
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                      <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/>
-                    </svg>
+                  <i class="bi bi-check-circle-fill text-success ms-1" style="font-size: 0.75rem;"
+                    title="Assistido"></i>
                   }
-                </button>
+                </div>
+                <div class="small text-muted" style="font-size: 0.7rem;">
+                  <i class="bi bi-clock me-1"></i>24min
+                  @if (!isEpisodeWatched(episode)) {
+                  <i class="bi bi-play-circle ms-1" title="Clique para assistir"></i>
+                  }
+                </div>
+              </div>
+
+              <!-- Indicador visual de ação -->
+              <div class="flex-shrink-0">
+                <i class="bi bi-chevron-right text-muted" style="font-size: 0.8rem;"></i>
               </div>
             </div>
+            }
             }
           </div>
         </div>
         }
       </div>
-      }
     </div>
+    }
     }
   </div>
 
   <!-- Paginação -->
-  <div class="pagination-container">
-    <div class="pagination">
-      <!-- Botão Primeira Página -->
-      <button class="pagination-button" [disabled]="!canGoPrevious()" (click)="goToFirstPage()" title="Primeira página">
-        ««
-      </button>
+  <div class="d-flex flex-column align-items-center gap-3 mt-5">
+    <!-- Controles de paginação -->
+    <nav aria-label="Navegação da página">
+      <ul class="pagination pagination-lg mb-0">
+        <!-- Primeira página -->
+        <li class="page-item" [class.disabled]="!canGoPrevious()">
+          <button class="page-link bg-secondary border-secondary text-white" [disabled]="!canGoPrevious()"
+            (click)="goToFirstPage()" title="Primeira página">
+            ««
+          </button>
+        </li>
 
-      <!-- Botão Página Anterior -->
-      <button class="pagination-button" [disabled]="!canGoPrevious()" (click)="previousPage()" title="Página anterior">
-        ‹
-      </button>
+        <!-- Página anterior -->
+        <li class="page-item" [class.disabled]="!canGoPrevious()">
+          <button class="page-link bg-secondary border-secondary text-white" [disabled]="!canGoPrevious()"
+            (click)="previousPage()" title="Página anterior">
+            ‹
+          </button>
+        </li>
 
-      <!-- Números das páginas -->
-      @for (pageNum of pageNumbers(); track pageNum) {
-      <button class="pagination-button" [class.active]="pageNum === currentPage()" (click)="goToPage(pageNum)">
-        {{ pageNum }}
-      </button>
-      }
+        <!-- Números das páginas -->
+        @for (pageNum of pageNumbers(); track pageNum) {
+        <li class="page-item" [class.active]="pageNum === currentPage()">
+          <button class="page-link" [class.bg-primary]="pageNum === currentPage()"
+            [class.border-primary]="pageNum === currentPage()" [class.bg-secondary]="pageNum !== currentPage()"
+            [class.border-secondary]="pageNum !== currentPage()" [class.text-white]="true" (click)="goToPage(pageNum)">
+            {{ pageNum }}
+          </button>
+        </li>
+        }
 
-      <!-- Botão Próxima Página -->
-      <button class="pagination-button" [disabled]="!canGoNext()" (click)="nextPage()" title="Próxima página">
-        ›
-      </button>
+        <!-- Próxima página -->
+        <li class="page-item" [class.disabled]="!canGoNext()">
+          <button class="page-link bg-secondary border-secondary text-white" [disabled]="!canGoNext()"
+            (click)="nextPage()" title="Próxima página">
+            ›
+          </button>
+        </li>
 
-      <!-- Botão Última Página -->
-      <button class="pagination-button" [disabled]="!canGoNext()" (click)="goToLastPage()" title="Última página">
-        »»
-      </button>
-    </div>
+        <!-- Última página -->
+        <li class="page-item" [class.disabled]="!canGoNext()">
+          <button class="page-link bg-secondary border-secondary text-white" [disabled]="!canGoNext()"
+            (click)="goToLastPage()" title="Última página">
+            »»
+          </button>
+        </li>
+      </ul>
+    </nav>
 
-    <!-- Informações da página atual -->
-    <div class="pagination-info">
-      <span>Página {{ currentPage() }} de {{ totalPages() }}</span>
+    <!-- Informações da página -->
+    <div class="text-muted">
+      <small>Página {{ currentPage() }} de {{ totalPages() }}</small>
     </div>
   </div>
 </div>

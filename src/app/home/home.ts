@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal, HostListener } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import {
@@ -153,7 +153,7 @@ export class Home implements OnInit {
     // Adiciona delay para evitar muitas requisições
     this.searchTimeout = setTimeout(() => {
       this.searchAnimes();
-    }, 300); // 300ms de delay
+    }, 800); // 300ms de delay
   }
 
   // Limpa a busca e volta para listagem normal
@@ -208,6 +208,14 @@ export class Home implements OnInit {
   canGoNext = computed(() => this.currentPage() < this.totalPages());
   canGoPrevious = computed(() => this.currentPage() > 1);
 
+  // Listener para tecla Escape
+  @HostListener('document:keydown.escape')
+  onEscapePress(): void {
+    if (this.expandedAnimeId()) {
+      this.closeExpansion();
+    }
+  }
+
   // Navegar para a página de episódios
   navigateToEpisodes(animeId: number): void {
     this.router.navigate(['/anime', animeId]);
@@ -227,9 +235,9 @@ export class Home implements OnInit {
       this.expandedAnimeId.set(anime.id);
       this.expandedAnime.set(anime);
 
-      // Determina direção da expansão baseado na posição na grid (10 por linha)
-      const positionInRow = index % 10;
-      const direction = positionInRow >= 7 ? 'left' : 'right'; // Se está nas últimas 3 posições, expande para esquerda
+      // Determina direção da expansão baseado na posição na grid (5 por linha)
+      const positionInRow = index % 5;
+      const direction = positionInRow >= 3 ? 'left' : 'right'; // Se está nas últimas 2 posições, expande para esquerda
       this.expandDirection.set(direction);
 
       // Carrega episódios do Supabase
@@ -262,10 +270,14 @@ export class Home implements OnInit {
     return this.episodeService.isWatched(episode.id);
   }
 
-  // Navega para o player do episódio
+  // Navega para o player do episódio e marca como assistido
   playEpisode(episode: SupabaseEpisode): void {
     const anime = this.expandedAnime();
     if (anime) {
+      // Marca o episódio como assistido automaticamente
+      this.episodeService.markAsWatched(episode.id);
+      
+      // Navega para o player
       const animeSlug = this.createSlug(anime.titulo);
       this.router.navigate(['/player', animeSlug, episode.id]);
     }
