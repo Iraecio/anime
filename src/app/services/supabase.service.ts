@@ -44,6 +44,73 @@ export class SupabaseService {
 
     return from(
       this.supabase
+        .from('animes_complete')
+        .select('*', { count: 'exact' })
+        .range(from_index, to_index)
+        .order('ultimo_episodio_criado_em', {
+          ascending: false,
+          nullsFirst: false,
+        })
+        .order('total_episodios', { ascending: false })
+    ).pipe(
+      map(({ data, error, count }) => {
+        this.isLoading.set(false);
+
+        if (error) {
+          this.error.set(error.message);
+          throw new Error(error.message);
+        }
+
+        // Map and filter to ensure correct types
+        const animes: SupabaseAnimeWithEpisodes[] = (data || [])
+          .filter(
+            (anime) =>
+              anime.id !== null &&
+              typeof anime.id === 'number' &&
+              anime.titulo !== null &&
+              typeof anime.titulo === 'string'
+          )
+          .map((anime) => ({
+            id: anime.id!,
+            titulo: anime.titulo!,
+            thumb: anime.thumb,
+            slug: anime.slug,
+            dublado: anime.dublado,
+            link_original: anime.link_original || '',
+            status: anime.status ?? null,
+            criado_em: anime.criado_em ?? null,
+            atualizado_em: anime.atualizado_em ?? null,
+            episodios: Array.isArray(anime.episodios)
+              ? (anime.episodios as SupabaseEpisode[])
+              : [],
+          }));
+
+        return {
+          data: animes,
+          total: count || 0,
+        };
+      }),
+      catchError((error) => {
+        this.isLoading.set(false);
+        this.error.set(error.message);
+        console.error('Erro ao buscar animes:', error);
+        return of({ data: [], total: 0 });
+      })
+    );
+  }
+
+  getAnimess(
+    page: number = 1,
+    limit: number = 50
+  ): Observable<{ data: SupabaseAnimeWithEpisodes[]; total: number }> {
+    this.isLoading.set(true);
+    this.error.set(null);
+
+    const from_index = (page - 1) * limit;
+    const to_index = from_index + limit - 1;
+
+    return from(
+      this.supabase
         .from('animes_with_latest_episode')
         .select('*', { count: 'exact' })
         .range(from_index, to_index)
@@ -81,33 +148,33 @@ export class SupabaseService {
 
             // Agrupar episódios por título do anime
             const episodiosPorTitulo = (episodiosData || [])
-              .filter((episodio) => 
-                episodio.id !== null && 
-                episodio.titulo !== null &&
-                episodio.anime_id !== null &&
-                episodio.numero !== null
+              .filter(
+                (episodio) =>
+                  episodio.id !== null &&
+                  episodio.titulo !== null &&
+                  episodio.anime_id !== null &&
+                  episodio.numero !== null
               )
-              .reduce(
-                (acc, episodio) => {
-                  const tituloAnime = episodio.titulo!;
-                  if (!acc[tituloAnime]) {
-                    acc[tituloAnime] = [];
-                  }
-                  acc[tituloAnime].push({
-                    id: episodio.id!,
-                    anime_id: episodio.anime_id!,
-                    numero: episodio.numero!,
-                    criado_em: episodio.criado_em,
-                    link_original: episodio.link_original,
-                    link_video: episodio.link_video,
-                  });
-                  return acc;
-                },
-                {} as Record<string, SupabaseEpisode[]>
-              );
+              .reduce((acc, episodio) => {
+                const tituloAnime = episodio.titulo!;
+                if (!acc[tituloAnime]) {
+                  acc[tituloAnime] = [];
+                }
+                acc[tituloAnime].push({
+                  id: episodio.id!,
+                  anime_id: episodio.anime_id!,
+                  numero: episodio.numero!,
+                  criado_em: episodio.criado_em,
+                  link_original: episodio.link_original,
+                  link_video: episodio.link_video,
+                });
+                return acc;
+              }, {} as Record<string, SupabaseEpisode[]>);
 
             // Combinar animes com seus episódios
-            const animesWithEpisodes: SupabaseAnimeWithEpisodes[] = (animesData || [])
+            const animesWithEpisodes: SupabaseAnimeWithEpisodes[] = (
+              animesData || []
+            )
               .filter(
                 (anime) =>
                   anime.id !== null &&
@@ -181,7 +248,7 @@ export class SupabaseService {
   /**
    * Busca animes por título (pesquisa)
    */
-  searchAnimes(
+  searchAnimess(
     query: string,
     page: number = 1,
     limit: number = 50
@@ -232,33 +299,33 @@ export class SupabaseService {
 
             // Agrupar episódios por título do anime
             const episodiosPorTitulo = (episodiosData || [])
-              .filter((episodio) => 
-                episodio.id !== null && 
-                episodio.titulo !== null &&
-                episodio.anime_id !== null &&
-                episodio.numero !== null
+              .filter(
+                (episodio) =>
+                  episodio.id !== null &&
+                  episodio.titulo !== null &&
+                  episodio.anime_id !== null &&
+                  episodio.numero !== null
               )
-              .reduce(
-                (acc, episodio) => {
-                  const tituloAnime = episodio.titulo!;
-                  if (!acc[tituloAnime]) {
-                    acc[tituloAnime] = [];
-                  }
-                  acc[tituloAnime].push({
-                    id: episodio.id!,
-                    anime_id: episodio.anime_id!,
-                    numero: episodio.numero!,
-                    criado_em: episodio.criado_em,
-                    link_original: episodio.link_original,
-                    link_video: episodio.link_video,
-                  });
-                  return acc;
-                },
-                {} as Record<string, SupabaseEpisode[]>
-              );
+              .reduce((acc, episodio) => {
+                const tituloAnime = episodio.titulo!;
+                if (!acc[tituloAnime]) {
+                  acc[tituloAnime] = [];
+                }
+                acc[tituloAnime].push({
+                  id: episodio.id!,
+                  anime_id: episodio.anime_id!,
+                  numero: episodio.numero!,
+                  criado_em: episodio.criado_em,
+                  link_original: episodio.link_original,
+                  link_video: episodio.link_video,
+                });
+                return acc;
+              }, {} as Record<string, SupabaseEpisode[]>);
 
             // Combinar animes com seus episódios
-            const animesWithEpisodes: SupabaseAnimeWithEpisodes[] = (animesData || [])
+            const animesWithEpisodes: SupabaseAnimeWithEpisodes[] = (
+              animesData || []
+            )
               .filter(
                 (anime) =>
                   anime.id !== null &&
@@ -295,7 +362,74 @@ export class SupabaseService {
       })
     );
   }
+  searchAnimes(
+    query: string,
+    page: number = 1,
+    limit: number = 50
+  ): Observable<{ data: SupabaseAnimeWithEpisodes[]; total: number }> {
+    this.isLoading.set(true);
+    this.error.set(null);
 
+    const from_index = (page - 1) * limit;
+    const to_index = from_index + limit - 1;
+
+    return from(
+      this.supabase
+        .from('animes_complete')
+        .select('*', { count: 'exact' })
+        .ilike('titulo', `%${query}%`)
+        .range(from_index, to_index)
+        .order('ultimo_episodio_criado_em', {
+          ascending: false,
+          nullsFirst: false,
+        })
+        .order('total_episodios', { ascending: false })
+    ).pipe(
+      map(({ data, error, count }) => {
+        this.isLoading.set(false);
+
+        if (error) {
+          this.error.set(error.message);
+          throw new Error(error.message);
+        }
+
+        // Map and filter to ensure correct types
+        const animes: SupabaseAnimeWithEpisodes[] = (data || [])
+          .filter(
+            (anime) =>
+              anime.id !== null &&
+              typeof anime.id === 'number' &&
+              anime.titulo !== null &&
+              typeof anime.titulo === 'string'
+          )
+          .map((anime) => ({
+            id: anime.id!,
+            titulo: anime.titulo!,
+            thumb: anime.thumb,
+            slug: anime.slug,
+            dublado: anime.dublado,
+            link_original: anime.link_original || '',
+            status: anime.status ?? null,
+            criado_em: anime.criado_em ?? null,
+            atualizado_em: anime.atualizado_em ?? null,
+            episodios: Array.isArray(anime.episodios)
+              ? (anime.episodios as SupabaseEpisode[])
+              : [],
+          }));
+
+        return {
+          data: animes,
+          total: count || 0,
+        };
+      }),
+      catchError((error) => {
+        this.isLoading.set(false);
+        this.error.set(error.message);
+        console.error('Erro ao pesquisar animes:', error);
+        return of({ data: [], total: 0 });
+      })
+    );
+  }
   // ===== MÉTODOS PARA EPISÓDIOS =====
 
   /**
