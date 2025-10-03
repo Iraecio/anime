@@ -51,7 +51,7 @@ export class SupabaseService {
           ascending: false,
           nullsFirst: false,
         })
-        .order('criado_em', { ascending: false })
+        .order('total_episodios', { ascending: false })
     ).pipe(
       switchMap(({ data: animesData, error: animesError, count }) => {
         if (animesError) {
@@ -62,16 +62,16 @@ export class SupabaseService {
           return of({ data: [], total: count || 0 });
         }
 
-        // Buscar episódios para cada anime
-        const animeIds = animesData
-          .map((anime) => anime.id)
-          .filter((id): id is number => id !== null && id !== undefined);
+        // Buscar episódios para cada anime usando a view episodios_por_titulo
+        const titulos = animesData
+          .map((anime) => anime.titulo)
+          .filter((titulo): titulo is string => titulo !== null);
 
         return from(
           this.supabase
-            .from('episodios')
+            .from('episodios_por_titulo')
             .select('*')
-            .in('anime_id', animeIds)
+            .in('titulo', titulos)
             .order('numero', { ascending: true })
         ).pipe(
           map(({ data: episodiosData, error: episodiosError }) => {
@@ -79,32 +79,53 @@ export class SupabaseService {
               throw new Error(episodiosError.message);
             }
 
-            // Agrupar episódios por anime
-            const episodiosPorAnime = (episodiosData || []).reduce(
-              (acc, episodio) => {
-                if (!acc[episodio.anime_id]) {
-                  acc[episodio.anime_id] = [];
-                }
-                acc[episodio.anime_id].push(episodio);
-                return acc;
-              },
-              {} as Record<number, SupabaseEpisode[]>
-            );
+            // Agrupar episódios por título do anime
+            const episodiosPorTitulo = (episodiosData || [])
+              .filter((episodio) => 
+                episodio.id !== null && 
+                episodio.titulo !== null &&
+                episodio.anime_id !== null &&
+                episodio.numero !== null
+              )
+              .reduce(
+                (acc, episodio) => {
+                  const tituloAnime = episodio.titulo!;
+                  if (!acc[tituloAnime]) {
+                    acc[tituloAnime] = [];
+                  }
+                  acc[tituloAnime].push({
+                    id: episodio.id!,
+                    anime_id: episodio.anime_id!,
+                    numero: episodio.numero!,
+                    criado_em: episodio.criado_em,
+                    link_original: episodio.link_original,
+                    link_video: episodio.link_video,
+                  });
+                  return acc;
+                },
+                {} as Record<string, SupabaseEpisode[]>
+              );
 
-            // Combinar animes com seus episódios, garantindo que campos obrigatórios não sejam nulos
-            const animesWithEpisodes: any[] = (animesData || [])
+            // Combinar animes com seus episódios
+            const animesWithEpisodes: SupabaseAnimeWithEpisodes[] = (animesData || [])
               .filter(
                 (anime) =>
                   anime.id !== null &&
                   typeof anime.id === 'number' &&
                   anime.titulo !== null &&
-                  typeof anime.titulo === 'string' &&
-                  anime.link_original !== null &&
-                  typeof anime.link_original === 'string'
+                  typeof anime.titulo === 'string'
               )
               .map((anime) => ({
-                ...anime,
-                episodios: episodiosPorAnime[anime.id!] || [],
+                id: anime.id!,
+                titulo: anime.titulo!,
+                thumb: anime.thumb,
+                slug: anime.slug,
+                dublado: anime.dublado,
+                link_original: anime.link_original || '',
+                status: null, // não disponível na view
+                criado_em: null, // não disponível na view
+                atualizado_em: null, // não disponível na view
+                episodios: episodiosPorTitulo[anime.titulo!] || [],
               }));
 
             return { data: animesWithEpisodes, total: count || 0 };
@@ -181,7 +202,7 @@ export class SupabaseService {
           ascending: false,
           nullsFirst: false,
         })
-        .order('criado_em', { ascending: false })
+        .order('total_episodios', { ascending: false })
     ).pipe(
       switchMap(({ data: animesData, error: animesError, count }) => {
         if (animesError) {
@@ -192,16 +213,16 @@ export class SupabaseService {
           return of({ data: [], total: count || 0 });
         }
 
-        // Buscar episódios para cada anime
-        const animeIds = animesData
-          .map((anime) => anime.id)
-          .filter((id): id is number => id !== null && id !== undefined);
+        // Buscar episódios para cada anime usando a view episodios_por_titulo
+        const titulos = animesData
+          .map((anime) => anime.titulo)
+          .filter((titulo): titulo is string => titulo !== null);
 
         return from(
           this.supabase
-            .from('episodios')
+            .from('episodios_por_titulo')
             .select('*')
-            .in('anime_id', animeIds)
+            .in('titulo', titulos)
             .order('numero', { ascending: true })
         ).pipe(
           map(({ data: episodiosData, error: episodiosError }) => {
@@ -209,32 +230,53 @@ export class SupabaseService {
               throw new Error(episodiosError.message);
             }
 
-            // Agrupar episódios por anime
-            const episodiosPorAnime = (episodiosData || []).reduce(
-              (acc, episodio) => {
-                if (!acc[episodio.anime_id]) {
-                  acc[episodio.anime_id] = [];
-                }
-                acc[episodio.anime_id].push(episodio);
-                return acc;
-              },
-              {} as Record<number, SupabaseEpisode[]>
-            );
+            // Agrupar episódios por título do anime
+            const episodiosPorTitulo = (episodiosData || [])
+              .filter((episodio) => 
+                episodio.id !== null && 
+                episodio.titulo !== null &&
+                episodio.anime_id !== null &&
+                episodio.numero !== null
+              )
+              .reduce(
+                (acc, episodio) => {
+                  const tituloAnime = episodio.titulo!;
+                  if (!acc[tituloAnime]) {
+                    acc[tituloAnime] = [];
+                  }
+                  acc[tituloAnime].push({
+                    id: episodio.id!,
+                    anime_id: episodio.anime_id!,
+                    numero: episodio.numero!,
+                    criado_em: episodio.criado_em,
+                    link_original: episodio.link_original,
+                    link_video: episodio.link_video,
+                  });
+                  return acc;
+                },
+                {} as Record<string, SupabaseEpisode[]>
+              );
 
             // Combinar animes com seus episódios
-            const animesWithEpisodes: any[] = (animesData || [])
+            const animesWithEpisodes: SupabaseAnimeWithEpisodes[] = (animesData || [])
               .filter(
                 (anime) =>
                   anime.id !== null &&
                   typeof anime.id === 'number' &&
                   anime.titulo !== null &&
-                  typeof anime.titulo === 'string' &&
-                  anime.link_original !== null &&
-                  typeof anime.link_original === 'string'
+                  typeof anime.titulo === 'string'
               )
               .map((anime) => ({
-                ...anime,
-                episodios: episodiosPorAnime[anime.id!] || [],
+                id: anime.id!,
+                titulo: anime.titulo!,
+                thumb: anime.thumb,
+                slug: anime.slug,
+                dublado: anime.dublado,
+                link_original: anime.link_original || '',
+                status: null, // não disponível na view
+                criado_em: null, // não disponível na view
+                atualizado_em: null, // não disponível na view
+                episodios: episodiosPorTitulo[anime.titulo!] || [],
               }));
 
             return { data: animesWithEpisodes, total: count || 0 };
