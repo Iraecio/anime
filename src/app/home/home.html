@@ -42,7 +42,8 @@
       {{ isInSearchMode() ? 'Resultados da Busca' : 'Mostruário de Animes' }}
     </h1>
     <p class="lead text-white mb-4">
-      Mostrando {{ pageInfo().start }} - {{ pageInfo().end }} de {{ pageInfo().total }} {{ isInSearchMode() ? 'resultados'
+      Mostrando {{ pageInfo().start }} - {{ pageInfo().end }} de {{ pageInfo().total }} {{ isInSearchMode() ?
+      'resultados'
       : 'animes' }}
     </p>
 
@@ -82,107 +83,106 @@
     } @else {
     @for (anime of paginatedResult().data; track anime.id; let i = $index) {
     <div class="col-6 col-sm-4 col-md-3 col-lg-2 col-xl-2 mb-4">
-      <div class="card bg-secondary border-0 shadow anime-card h-100 position-relative"
-        [class.expanded]="isAnimeExpanded(anime.id)" (click)="toggleAnimeExpansion(anime, i)"
-        style="cursor: pointer; transition: transform 0.2s ease;" tabindex="0" role="button"
-        [attr.aria-expanded]="isAnimeExpanded(anime.id)" [attr.aria-label]="'Ver episódios de ' + anime.titulo"
+      <div class="netflix-card-container" (click)="toggleAnimeExpansion(anime, i)"
         (keydown.enter)="toggleAnimeExpansion(anime, i)"
-        (keydown.space)="toggleAnimeExpansion(anime, i); $event.preventDefault()">
+        (keydown.space)="toggleAnimeExpansion(anime, i); $event.preventDefault()" tabindex="0" role="button"
+        [attr.aria-expanded]="isAnimeExpanded(anime.id)" [attr.aria-label]="'Ver episódios de ' + anime.titulo">
 
-        <!-- Imagem do anime -->
-        <div class="position-relative overflow-hidden" style="height: 300px;">
-          <img [src]="anime.thumb" [alt]="anime.titulo" class="card-img-top h-100 w-100 object-fit-cover" loading="lazy"
-            onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNjY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iI2ZmZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlbSBOw6NvIEVuY29udHJhZGE8L3RleHQ+PC9zdmc+'" />
+        <div class="netflix-card" [class.flipped]="isAnimeExpanded(anime.id)">
+          <!-- Frente do card -->
+          <div class="netflix-card-front">
+            <div class="netflix-card-image">
+              <img [src]="anime.thumb" [alt]="anime.titulo" loading="lazy"
+                onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMjIxIi8+PHRleHQgeD0iNTAlIiB5PSI0NSUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iI2ZmZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkFuaW1lPC90ZXh0PjxjaXJjbGUgY3g9IjUwJSIgY3k9IjU1JSIgcj0iMTAiIGZpbGw9IiNlNTA5MTQiLz48L3N2Zz4='" />
 
-          <!-- Overlay com rating -->
-          <div
-            class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column justify-content-between p-2 anime-overlay"
-            style="background: linear-gradient(180deg, rgba(0,0,0,0.4) 0%, transparent 50%, rgba(0,0,0,0.8) 100%); opacity: 0; transition: opacity 0.3s ease;">
-            <div class="align-self-start">
-              <span class="badge bg-warning text-dark">
-                ★ 9.0
-              </span>
-            </div>
-          </div>
-        </div>
+              <!-- Overlay gradient -->
+              <div class="netflix-card-gradient"></div>
 
-        <!-- Título do anime -->
-        <div class="card-body p-3 text-center">
-          <h6 class="card-title text-white mb-0 fw-semibold lh-sm anime-title-clamp" [title]="anime.titulo">
-            {{ anime.titulo }}
-          </h6>
-        </div>
-
-        <!-- Painel de episódios (quando expandido) -->
-        @if (isAnimeExpanded(anime.id)) {
-        <div
-          class="position-absolute top-0 start-0 w-100 h-100 bg-dark border border-primary rounded episodes-panel shadow-lg"
-          [class.expand-left]="expandDirection() === 'left'" [class.expand-right]="expandDirection() === 'right'"
-          style="z-index: 1000; animation: expandPanel 0.3s ease-out;" role="dialog"
-          [attr.aria-label]="'Episódios de ' + expandedAnime()?.titulo">
-
-          <!-- Header do painel -->
-          <div class="d-flex justify-content-between align-items-center p-3 bg-primary text-white">
-            <h6 class="mb-0 fw-bold text-truncate me-2">{{ expandedAnime()?.titulo }}</h6>
-            <button class="btn btn-sm btn-outline-light border-0 p-1 rounded-circle"
-              (click)="closeExpansion(); $event.stopPropagation()" (keydown.escape)="closeExpansion()"
-              title="Fechar painel de episódios" aria-label="Fechar painel de episódios"
-              style="width: 32px; height: 32px;">
-              <i class="bi bi-x-lg"></i>
-            </button>
-          </div>
-
-          <!-- Lista de episódios -->
-          <div class="p-2 overflow-auto" style="height: calc(100% - 56px); max-height: 100%;">
-            @if (expandedEpisodes().length === 0) {
-            <div class="text-center text-muted py-4">
-              <div class="mb-2">📺</div>
-              <small>Nenhum episódio disponível</small>
-            </div>
-            } @else {
-            @for (episode of expandedEpisodes(); track episode.id) {
-            <div class="d-flex align-items-center p-2 mb-1 rounded episode-item border"
-              [class.bg-success]="isEpisodeWatched(episode)" [class.border-success]="isEpisodeWatched(episode)"
-              [class.bg-secondary]="!isEpisodeWatched(episode)" [class.border-secondary]="!isEpisodeWatched(episode)"
-              style="cursor: pointer; transition: all 0.2s ease; min-height: 50px;" tabindex="0" role="button"
-              (click)="playEpisode(episode)" (keydown.enter)="playEpisode(episode)"
-              (keydown.space)="playEpisode(episode); $event.preventDefault()"
-              [attr.aria-label]="'Assistir episódio ' + episode.numero + (isEpisodeWatched(episode) ? ' (já assistido)' : '')">
-
-              <!-- Número do episódio -->
-              <div class="badge me-2 flex-shrink-0" [class.bg-success]="isEpisodeWatched(episode)"
-                [class.bg-primary]="!isEpisodeWatched(episode)"
-                style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;">
-                {{ episode.numero }}
+              <!-- Play button overlay -->
+              <div class="netflix-play-button">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
               </div>
 
-              <!-- Info do episódio -->
-              <div class="flex-grow-1 min-width-0">
-                <div class="fw-semibold text-white text-truncate d-flex align-items-center" style="font-size: 0.85rem;">
-                  <span>Ep. {{ episode.numero }}</span>
+              <!-- Rating badge -->
+              <div class="netflix-rating">
+                <span class="netflix-match">{{ getMatchPercentage(anime) }}% Match</span>
+              </div>
+            </div>
+
+            <!-- Card info -->
+            <div class="netflix-card-info">
+              <h3 class="netflix-title">{{ anime.titulo }}</h3>
+              <div class="netflix-meta">
+                <span class="netflix-episodes-count">{{ anime.episodios.length }} ep.</span>
+                @if (anime.dublado) {
+                <span class="netflix-dubbed">DUB</span>
+                }
+              </div>
+              <div class="netflix-genres">
+                <span class="netflix-genre">Anime</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Verso do card (lista de episódios) -->
+          <div class="netflix-card-back">
+            <div class="netflix-episodes-header">
+              <button class="netflix-close-btn" (click)="closeExpansion(); $event.stopPropagation()"
+                (keydown.escape)="closeExpansion()" aria-label="Fechar painel de episódios">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                  <path
+                    d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                </svg>
+              </button>
+              <h4 class="netflix-episodes-title">{{ expandedAnime()?.titulo }}</h4>
+              <span class="netflix-total-episodes">{{ expandedEpisodes().length }} episódios</span>
+            </div>
+
+            <div class="netflix-episodes-list">
+              @if (expandedEpisodes().length === 0) {
+              <div class="netflix-no-episodes">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                  <path
+                    d="M21,3H3C2,3 1,4 1,5V19A1,1 0 0,0 2,20H22A1,1 0 0,0 23,19V5C23,4 22,3 21,3M21,18H3V6H21V18Z" />
+                </svg>
+                <p>Nenhum episódio disponível</p>
+              </div>
+              } @else {
+              @for (episode of expandedEpisodes(); track episode.id) {
+              <div class="netflix-episode-item" [class.watched]="isEpisodeWatched(episode)"
+                (click)="playEpisode(episode)" (keydown.enter)="playEpisode(episode)"
+                (keydown.space)="playEpisode(episode); $event.preventDefault()" tabindex="0" role="button"
+                [attr.aria-label]="'Assistir episódio ' + episode.numero + (isEpisodeWatched(episode) ? ' (já assistido)' : '')">
+
+                <div class="netflix-episode-number">
+                  <span>{{ episode.numero }}</span>
                   @if (isEpisodeWatched(episode)) {
-                  <i class="bi bi-check-circle-fill text-success ms-1" style="font-size: 0.75rem;"
-                    title="Assistido"></i>
+                  <div class="netflix-watched-indicator">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                    </svg>
+                  </div>
                   }
                 </div>
-                <div class="small text-muted" style="font-size: 0.7rem;">
-                  <i class="bi bi-clock me-1"></i>24min
-                  @if (!isEpisodeWatched(episode)) {
-                  <i class="bi bi-play-circle ms-1" title="Clique para assistir"></i>
-                  }
-                </div>
-              </div>
 
-              <!-- Indicador visual de ação -->
-              <div class="flex-shrink-0">
-                <i class="bi bi-chevron-right text-muted" style="font-size: 0.8rem;"></i>
+                <div class="netflix-episode-info">
+                  <h5 class="netflix-episode-title">Episódio {{ episode.numero }}</h5>
+                  <p class="netflix-episode-duration">24min</p>
+                </div>
+
+                <div class="netflix-episode-play">
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                </div>
               </div>
+              }
+              }
             </div>
-            }
-            }
           </div>
         </div>
-        }
       </div>
     </div>
     }

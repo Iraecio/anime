@@ -2,9 +2,9 @@ import { Component, computed, inject, OnInit, signal, HostListener } from '@angu
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import {
-  SupabaseAnimeWithEpisodes,
-  SupabaseEpisode,
-  SupabaseService,
+    SupabaseAnimeWithEpisodes,
+    SupabaseEpisode,
+    SupabaseService,
 } from '../services/supabase.service';
 import { EpisodeService } from '../services/episode.service';
 
@@ -293,5 +293,35 @@ export class Home implements OnInit {
       .replace(/\s+/g, '-') // Substituir espaços por hífens
       .replace(/-+/g, '-') // Remover hífens duplicados
       .trim(); // Remover espaços em branco
+  }
+
+  // ========================================
+  // NETFLIX-STYLE HELPER METHODS
+  // ========================================
+
+  /**
+   * Gera uma porcentagem de "match" para o anime baseado no número de episódios
+   * e se é dublado (simulado para efeito visual)
+   */
+  getMatchPercentage(anime: SupabaseAnimeWithEpisodes): number {
+    // Simula uma porcentagem baseada em critérios do anime
+    let percentage = 75; // Base
+    
+    // Mais episódios = maior match (até 95%)
+    if (anime.episodios.length > 50) percentage = 95;
+    else if (anime.episodios.length > 25) percentage = 90;
+    else if (anime.episodios.length > 12) percentage = 85;
+    else if (anime.episodios.length > 6) percentage = 80;
+    
+    // Dublado adiciona pontos
+    if (anime.dublado) {
+      percentage = Math.min(98, percentage + 5);
+    }
+    
+    // Adiciona um pouco de aleatoriedade baseada no ID para variedade
+    const randomFactor = (anime.id % 10) - 5; // -5 a +4
+    percentage = Math.max(65, Math.min(98, percentage + randomFactor));
+    
+    return Math.round(percentage);
   }
 }
