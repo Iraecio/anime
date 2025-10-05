@@ -28,78 +28,7 @@ export class SupabaseService {
   }
 
   // ===== MÉTODOS PARA ANIMES =====
-
-  /**
-   * Busca todos os animes com paginação
-   */
   getAnimes(
-    page: number = 1,
-    limit: number = 50
-  ): Observable<{ data: SupabaseAnimeWithEpisodes[]; total: number }> {
-    this.isLoading.set(true);
-    this.error.set(null);
-
-    const from_index = (page - 1) * limit;
-    const to_index = from_index + limit - 1;
-
-    return from(
-      this.supabase
-        .from('animes_complete')
-        .select('*', { count: 'exact' })
-        .range(from_index, to_index)
-        .order('ultimo_episodio_criado_em', {
-          ascending: false,
-          nullsFirst: false,
-        })
-        .order('total_episodios', { ascending: false })
-    ).pipe(
-      map(({ data, error, count }) => {
-        this.isLoading.set(false);
-
-        if (error) {
-          this.error.set(error.message);
-          throw new Error(error.message);
-        }
-
-        // Map and filter to ensure correct types
-        const animes: SupabaseAnimeWithEpisodes[] = (data || [])
-          .filter(
-            (anime) =>
-              anime.id !== null &&
-              typeof anime.id === 'number' &&
-              anime.titulo !== null &&
-              typeof anime.titulo === 'string'
-          )
-          .map((anime) => ({
-            id: anime.id!,
-            titulo: anime.titulo!,
-            thumb: anime.thumb,
-            slug: anime.slug,
-            dublado: anime.dublado,
-            link_original: anime.link_original || '',
-            status: anime.status ?? null,
-            criado_em: anime.criado_em ?? null,
-            atualizado_em: anime.atualizado_em ?? null,
-            episodios: Array.isArray(anime.episodios)
-              ? (anime.episodios as SupabaseEpisode[])
-              : [],
-          }));
-
-        return {
-          data: animes,
-          total: count || 0,
-        };
-      }),
-      catchError((error) => {
-        this.isLoading.set(false);
-        this.error.set(error.message);
-        console.error('Erro ao buscar animes:', error);
-        return of({ data: [], total: 0 });
-      })
-    );
-  }
-
-  getAnimess(
     page: number = 1,
     limit: number = 50
   ): Observable<{ data: SupabaseAnimeWithEpisodes[]; total: number }> {
@@ -248,7 +177,7 @@ export class SupabaseService {
   /**
    * Busca animes por título (pesquisa)
    */
-  searchAnimess(
+  searchAnimes(
     query: string,
     page: number = 1,
     limit: number = 50
@@ -362,7 +291,7 @@ export class SupabaseService {
       })
     );
   }
-  searchAnimes(
+  searchAnimess(
     query: string,
     page: number = 1,
     limit: number = 50
