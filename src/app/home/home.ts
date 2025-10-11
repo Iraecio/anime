@@ -42,6 +42,9 @@ export class Home implements OnInit {
   expandedAnime = signal<SupabaseAnimeWithEpisodes | null>(null);
   expandDirection = signal<'left' | 'right'>('right');
 
+  // Estados para controle de conteúdo +18
+  revealedAdultContent = signal<Set<number>>(new Set());
+
   // Computed properties para paginação
   totalPages = computed(() => Math.ceil(this.totalAnimes() / this.perPage()));
 
@@ -164,6 +167,9 @@ export class Home implements OnInit {
 
     // Reseta para primeira página ao buscar
     this.currentPage.set(1);
+    
+    // Limpa conteúdo adulto revelado ao fazer nova busca
+    this.clearRevealedAdultContent();
 
     // Adiciona delay para evitar muitas requisições
     this.searchTimeout = setTimeout(() => {
@@ -202,6 +208,7 @@ export class Home implements OnInit {
   clearSearch(): void {
     this.searchQuery.set('');
     this.currentPage.set(1);
+    this.clearRevealedAdultContent(); // Limpa filtro ao limpar busca
     this.loadAnimes();
     
     // Foca no input após limpar
@@ -223,6 +230,7 @@ export class Home implements OnInit {
   goToPage(page: number): void {
     if (page >= 1 && page <= this.totalPages()) {
       this.currentPage.set(page);
+      this.clearRevealedAdultContent(); // Limpa filtro ao mudar página
       this.loadCurrentData();
     }
   }
@@ -230,6 +238,7 @@ export class Home implements OnInit {
   nextPage(): void {
     if (this.currentPage() < this.totalPages()) {
       this.currentPage.update((page) => page + 1);
+      this.clearRevealedAdultContent(); // Limpa filtro ao mudar página
       this.loadCurrentData();
     }
   }
@@ -237,18 +246,95 @@ export class Home implements OnInit {
   previousPage(): void {
     if (this.currentPage() > 1) {
       this.currentPage.update((page) => page - 1);
+      this.clearRevealedAdultContent(); // Limpa filtro ao mudar página
       this.loadCurrentData();
     }
   }
 
   goToFirstPage(): void {
     this.currentPage.set(1);
+    this.clearRevealedAdultContent(); // Limpa filtro ao mudar página
     this.loadCurrentData();
   }
 
   goToLastPage(): void {
     this.currentPage.set(this.totalPages());
+    this.clearRevealedAdultContent(); // Limpa filtro ao mudar página
     this.loadCurrentData();
+  }
+
+  // ===== MÉTODOS PARA CONTROLE DE CONTEÚDO +18 =====
+  
+  // Verifica se um anime tem conteúdo +18
+  isAdultContent(anime: SupabaseAnimeWithEpisodes): boolean {
+    // Verifica primeiro pelos gêneros se existirem
+    if (anime.generos) {
+      const generos = Array.isArray(anime.generos) ? anime.generos : [anime.generos];
+      const hasAdultGenre = generos.some((genero: any) => {
+        const nomeGenero = typeof genero === 'string' ? genero : genero?.nome;
+        return nomeGenero && (
+          nomeGenero.toLowerCase().includes('+18') ||
+          nomeGenero.toLowerCase().includes('adulto') ||
+          nomeGenero.toLowerCase().includes('ecchi') ||
+          nomeGenero.toLowerCase().includes('hentai') ||
+          nomeGenero.toLowerCase().includes('mature')
+        );
+      });
+      
+      if (hasAdultGenre) return true;
+    }
+    
+    // Para demonstração, detecta alguns animes como +18 baseado no título
+    const titulo = anime.titulo?.toLowerCase() || '';
+    return (
+      titulo.includes('nukitashi') ||
+      titulo.includes('bad girl') ||
+      titulo.includes('panty') ||
+      titulo.includes('stocking') ||
+      titulo.includes('ecchi') ||
+      titulo.includes('hentai') ||
+      titulo.includes('+18')
+    );
+  }
+
+  // Verifica se o conteúdo +18 foi revelado
+  isAdultContentRevealed(animeId: number): boolean {
+    return this.revealedAdultContent().has(animeId);
+  }
+
+  // Alterna a revelação do conteúdo +18
+  toggleAdultContentReveal(animeId: number, event?: Event): void {
+    if (event) {
+      event.stopPropagation();
+    }
+    
+    const currentRevealed = this.revealedAdultContent();
+    const newRevealed = new Set(currentRevealed);
+    
+    if (newRevealed.has(animeId)) {
+      newRevealed.delete(animeId);
+    } else {
+      newRevealed.add(animeId);
+    }
+    
+    this.revealedAdultContent.set(newRevealed);
+  }
+
+  // Limpa todo o conteúdo adulto revelado
+  clearRevealedAdultContent(): void {
+    this.revealedAdultContent.set(new Set());
+  }
+
+  // Lida com o clique no card do anime (considerando conteúdo +18)
+  handleAnimeCardClick(anime: SupabaseAnimeWithEpisodes, index: number): void {
+    // Se é conteúdo adulto e não foi revelado, revela primeiro
+    if (this.isAdultContent(anime) && !this.isAdultContentRevealed(anime.id!)) {
+      this.toggleAdultContentReveal(anime.id!);
+      return;
+    }
+    
+    // Caso contrário, comportamento normal (expandir/colapsar episódios)
+    this.toggleAnimeExpansion(anime, index);
   }
 
   // Computed para verificar se é possível navegar
@@ -285,6 +371,23 @@ export class Home implements OnInit {
     if (this.expandedAnimeId()) {
       this.closeExpansion();
     }
+    
+    // Também limpa conteúdo adulto revelado
+    this.clearRevealedAdultContent();
+  }
+
+  // Listener para cliques no documento (reset do filtro +18)
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: Event): void {
+    // Se clicou fora dos cards de anime, limpa conteúdo revelado
+    const target = event.target as HTMLElement;
+    const isAnimeCard = target.closest('.netflix-card-container');
+    const isSearchInput = target.closest('.search-container');
+    const isPagination = target.closest('.pagination');
+    
+    if (!isAnimeCard && !isSearchInput && !isPagination) {
+      this.clearRevealedAdultContent();
+    }
   }
 
   // Navegar para a página de episódios
@@ -305,6 +408,9 @@ export class Home implements OnInit {
       // Expande o anime
       this.expandedAnimeId.set(anime.id);
       this.expandedAnime.set(anime);
+      
+      // Limpa outros animes com filtro revelado ao expandir
+      this.clearRevealedAdultContent();
 
       // Determina direção da expansão baseado na posição na grid (5 por linha)
       const positionInRow = index % 5;

@@ -610,3 +610,140 @@ $card-border-radius: 8px;
 .netflix-episodes-title {
   line-clamp: 2;
 }
+
+// ========================================
+// ADULT CONTENT (+18) OVERLAY STYLES
+// ========================================
+
+.adult-content-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.8);
+  transition: all 0.3s ease;
+  
+  &:hover {
+    background: rgba(0, 0, 0, 0.9);
+    
+    .adult-content-icon {
+      transform: scale(1.1);
+    }
+  }
+}
+
+.adult-content-blur {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.adult-content-icon {
+  position: relative;
+  z-index: 11;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: white;
+  transition: transform 0.3s ease;
+  padding: 20px;
+  
+  svg {
+    margin-bottom: 12px;
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
+    opacity: 0.9;
+  }
+  
+  .adult-content-text {
+    font-weight: bold;
+    font-size: 1.1rem;
+    margin-bottom: 8px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.7);
+    color: $netflix-red;
+  }
+  
+  .adult-content-hint {
+    font-size: 0.8rem;
+    opacity: 0.8;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+  }
+}
+
+// Card states for adult content
+.netflix-card-container {
+  // Só mostra a tag quando o conteúdo foi revelado
+  &.adult-content-card.adult-content-revealed {
+    .netflix-card-image::after {
+      content: '18+';
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: rgba(0, 0, 0, 0.9);
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: bold;
+      text-shadow: none;
+      z-index: 15;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    }
+  }
+}
+
+// Responsive adjustments for adult content overlay
+@media (max-width: 768px) {
+  .adult-content-icon {
+    padding: 15px;
+    
+    svg {
+      width: 36px;
+      height: 36px;
+      margin-bottom: 8px;
+    }
+    
+    .adult-content-text {
+      font-size: 0.9rem;
+      margin-bottom: 6px;
+    }
+    
+    .adult-content-hint {
+      font-size: 0.7rem;
+    }
+  }
+}
+
+@media (max-width: 576px) {
+  .adult-content-icon {
+    padding: 10px;
+    
+    svg {
+      width: 32px;
+      height: 32px;
+      margin-bottom: 6px;
+    }
+    
+    .adult-content-text {
+      font-size: 0.8rem;
+      margin-bottom: 4px;
+    }
+    
+    .adult-content-hint {
+      font-size: 0.65rem;
+    }
+  }
+}
