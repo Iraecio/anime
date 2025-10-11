@@ -214,7 +214,7 @@ export class SupabaseService {
               status: null, // não disponível na view
               criado_em: null, // não disponível na view
               atualizado_em: null, // não disponível na view
-              ano: null, // Adiciona o campo 'ano' para compatibilidade de tipo
+              ano: animeData.ano || null, // Adiciona o campo 'ano' para compatibilidade de tipo
               episodios,
               generos: Array.isArray(animeData.generos)
                 ? animeData.generos.filter(
@@ -340,7 +340,7 @@ export class SupabaseService {
                 status: null, // não disponível na view
                 criado_em: null, // não disponível na view
                 atualizado_em: null, // não disponível na view
-                ano: null, // Adiciona o campo 'ano' para compatibilidade de tipo
+                ano: anime.ano || null, // Adiciona o campo 'ano' para compatibilidade de tipo
                 episodios: episodiosPorTitulo[anime.titulo!] || [],
                 generos: Array.isArray(anime.generos)
                   ? anime.generos.filter(
