@@ -174,6 +174,7 @@ export type Database = {
       }
       animes_with_latest_episode: {
         Row: {
+          ano: string | null
           dublado: boolean | null
           generos: Json | null
           id: number | null

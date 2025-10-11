@@ -187,6 +187,16 @@ $card-border-radius: 8px;
     font-size: 0.7rem;
     font-weight: 600;
   }
+  
+  .netflix-year {
+    background: $netflix-gray;
+    color: $netflix-off-white;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    border: 1px solid $netflix-light-gray;
+  }
 }
 
 .netflix-genres {

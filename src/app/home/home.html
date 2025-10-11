@@ -121,6 +121,10 @@
                 } @else {
                 <span class="netflix-dubbed">LEG</span>
                 }
+
+                @if (anime.ano) {
+                <span class="netflix-year">{{ anime.ano }}</span>
+                }
               </div>
               <div class="netflix-genres">
                 @for (item of anime.generos.slice(0, 3); track $index) {
