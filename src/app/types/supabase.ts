@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       animes: {
         Row: {
+          ano: string | null
           atualizado_em: string | null
           criado_em: string | null
           dublado: boolean | null
@@ -27,6 +28,7 @@ export type Database = {
           titulo: string
         }
         Insert: {
+          ano?: string | null
           atualizado_em?: string | null
           criado_em?: string | null
           dublado?: boolean | null
@@ -38,6 +40,7 @@ export type Database = {
           titulo: string
         }
         Update: {
+          ano?: string | null
           atualizado_em?: string | null
           criado_em?: string | null
           dublado?: boolean | null
@@ -49,6 +52,43 @@ export type Database = {
           titulo?: string
         }
         Relationships: []
+      }
+      animes_generos: {
+        Row: {
+          anime_id: number
+          genero_id: number
+        }
+        Insert: {
+          anime_id: number
+          genero_id: number
+        }
+        Update: {
+          anime_id?: number
+          genero_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "animes_generos_anime_id_fkey"
+            columns: ["anime_id"]
+            isOneToOne: false
+            referencedRelation: "animes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "animes_generos_anime_id_fkey"
+            columns: ["anime_id"]
+            isOneToOne: false
+            referencedRelation: "animes_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "animes_generos_genero_id_fkey"
+            columns: ["genero_id"]
+            isOneToOne: false
+            referencedRelation: "generos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       episodios: {
         Row: {
@@ -92,6 +132,27 @@ export type Database = {
           },
         ]
       }
+      generos: {
+        Row: {
+          atualizado_em: string | null
+          criado_em: string | null
+          id: number
+          nome: string
+        }
+        Insert: {
+          atualizado_em?: string | null
+          criado_em?: string | null
+          id?: number
+          nome: string
+        }
+        Update: {
+          atualizado_em?: string | null
+          criado_em?: string | null
+          id?: number
+          nome?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       animes_complete: {
@@ -114,6 +175,7 @@ export type Database = {
       animes_with_latest_episode: {
         Row: {
           dublado: boolean | null
+          generos: Json | null
           id: number | null
           link_original: string | null
           slug: string | null

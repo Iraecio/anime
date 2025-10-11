@@ -200,6 +200,13 @@ $card-border-radius: 8px;
     padding: 2px 6px;
     border: 1px solid $netflix-light-gray;
     border-radius: 12px;
+    
+    &.netflix-genre-more {
+      background-color: $netflix-light-gray;
+      color: $netflix-black;
+      border-color: $netflix-light-gray;
+      font-weight: 500;
+    }
   }
 }
 

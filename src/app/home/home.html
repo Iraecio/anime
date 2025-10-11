@@ -121,7 +121,12 @@
                 }
               </div>
               <div class="netflix-genres">
-                <span class="netflix-genre">Anime</span>
+                @for (item of anime.generos.slice(0, 3); track $index) {
+                <span class="netflix-genre">{{ item }}</span>
+                }
+                @if (anime.generos.length > 3) {
+                <span class="netflix-genre netflix-genre-more">+{{ anime.generos.length - 3 }}</span>
+                }
               </div>
             </div>
           </div>

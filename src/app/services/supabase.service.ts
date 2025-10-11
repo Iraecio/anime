@@ -8,6 +8,7 @@ export type SupabaseAnime = Database['public']['Tables']['animes']['Row'];
 export type SupabaseEpisode = Database['public']['Tables']['episodios']['Row'];
 export type SupabaseAnimeWithEpisodes = SupabaseAnime & {
   episodios: SupabaseEpisode[];
+  generos: string[];
 };
 
 @Injectable({
@@ -121,7 +122,15 @@ export class SupabaseService {
                 status: null, // não disponível na view
                 criado_em: null, // não disponível na view
                 atualizado_em: null, // não disponível na view
+                ano: null, // Adiciona o campo 'ano' para compatibilidade de tipo
                 episodios: episodiosPorTitulo[anime.titulo!] || [],
+                generos: Array.isArray(anime.generos)
+                  ? anime.generos.filter(
+                      (g): g is string => typeof g === 'string'
+                    )
+                  : typeof anime.generos === 'string'
+                  ? [anime.generos]
+                  : [],
               }));
 
             return { data: animesWithEpisodes, total: count || 0 };
@@ -150,20 +159,79 @@ export class SupabaseService {
 
     return from(
       this.supabase
-        .from('animes')
-        .select('*, episodios(*)')
+        .from('animes_with_latest_episode')
+        .select('*')
         .eq('id', id)
         .single()
     ).pipe(
-      map(({ data, error }) => {
-        this.isLoading.set(false);
-
-        if (error) {
-          this.error.set(error.message);
-          return null;
+      switchMap(({ data: animeData, error: animeError }) => {
+        if (animeError) {
+          throw new Error(animeError.message);
         }
 
-        return data ?? null;
+        if (!animeData || !animeData.titulo) {
+          return of(null);
+        }
+
+        // Buscar episódios para este anime usando a view episodios_por_titulo
+        return from(
+          this.supabase
+            .from('episodios_por_titulo')
+            .select('*')
+            .eq('titulo', animeData.titulo)
+            .order('numero', { ascending: true })
+        ).pipe(
+          map(({ data: episodiosData, error: episodiosError }) => {
+            if (episodiosError) {
+              throw new Error(episodiosError.message);
+            }
+
+            // Mapear episódios
+            const episodios: SupabaseEpisode[] = (episodiosData || [])
+              .filter(
+                (episodio) =>
+                  episodio.id !== null &&
+                  episodio.anime_id !== null &&
+                  episodio.numero !== null
+              )
+              .map((episodio) => ({
+                id: episodio.id!,
+                anime_id: episodio.anime_id!,
+                numero: episodio.numero!,
+                criado_em: episodio.criado_em,
+                link_original: episodio.link_original,
+                link_video: episodio.link_video,
+              }));
+
+            // Combinar anime com seus episódios
+            const animeWithEpisodes: SupabaseAnimeWithEpisodes = {
+              id: animeData.id!,
+              titulo: animeData.titulo!,
+              thumb: animeData.thumb,
+              slug: animeData.slug,
+              dublado: animeData.dublado,
+              link_original: animeData.link_original || '',
+              status: null, // não disponível na view
+              criado_em: null, // não disponível na view
+              atualizado_em: null, // não disponível na view
+              ano: null, // Adiciona o campo 'ano' para compatibilidade de tipo
+              episodios,
+              generos: Array.isArray(animeData.generos)
+                ? animeData.generos.filter(
+                    (g): g is string => typeof g === 'string'
+                  )
+                : typeof animeData.generos === 'string'
+                ? [animeData.generos]
+                : [],
+            };
+
+            return animeWithEpisodes;
+          })
+        );
+      }),
+      map((result) => {
+        this.isLoading.set(false);
+        return result;
       }),
       catchError((error) => {
         this.isLoading.set(false);
@@ -272,7 +340,15 @@ export class SupabaseService {
                 status: null, // não disponível na view
                 criado_em: null, // não disponível na view
                 atualizado_em: null, // não disponível na view
+                ano: null, // Adiciona o campo 'ano' para compatibilidade de tipo
                 episodios: episodiosPorTitulo[anime.titulo!] || [],
+                generos: Array.isArray(anime.generos)
+                  ? anime.generos.filter(
+                      (g): g is string => typeof g === 'string'
+                    )
+                  : typeof anime.generos === 'string'
+                  ? [anime.generos]
+                  : [],
               }));
 
             return { data: animesWithEpisodes, total: count || 0 };
@@ -291,74 +367,7 @@ export class SupabaseService {
       })
     );
   }
-  searchAnimess(
-    query: string,
-    page: number = 1,
-    limit: number = 50
-  ): Observable<{ data: SupabaseAnimeWithEpisodes[]; total: number }> {
-    this.isLoading.set(true);
-    this.error.set(null);
-
-    const from_index = (page - 1) * limit;
-    const to_index = from_index + limit - 1;
-
-    return from(
-      this.supabase
-        .from('animes_complete')
-        .select('*', { count: 'exact' })
-        .ilike('titulo', `%${query}%`)
-        .range(from_index, to_index)
-        .order('ultimo_episodio_criado_em', {
-          ascending: false,
-          nullsFirst: false,
-        })
-        .order('total_episodios', { ascending: false })
-    ).pipe(
-      map(({ data, error, count }) => {
-        this.isLoading.set(false);
-
-        if (error) {
-          this.error.set(error.message);
-          throw new Error(error.message);
-        }
-
-        // Map and filter to ensure correct types
-        const animes: SupabaseAnimeWithEpisodes[] = (data || [])
-          .filter(
-            (anime) =>
-              anime.id !== null &&
-              typeof anime.id === 'number' &&
-              anime.titulo !== null &&
-              typeof anime.titulo === 'string'
-          )
-          .map((anime) => ({
-            id: anime.id!,
-            titulo: anime.titulo!,
-            thumb: anime.thumb,
-            slug: anime.slug,
-            dublado: anime.dublado,
-            link_original: anime.link_original || '',
-            status: anime.status ?? null,
-            criado_em: anime.criado_em ?? null,
-            atualizado_em: anime.atualizado_em ?? null,
-            episodios: Array.isArray(anime.episodios)
-              ? (anime.episodios as SupabaseEpisode[])
-              : [],
-          }));
-
-        return {
-          data: animes,
-          total: count || 0,
-        };
-      }),
-      catchError((error) => {
-        this.isLoading.set(false);
-        this.error.set(error.message);
-        console.error('Erro ao pesquisar animes:', error);
-        return of({ data: [], total: 0 });
-      })
-    );
-  }
+   
   // ===== MÉTODOS PARA EPISÓDIOS =====
 
   /**
