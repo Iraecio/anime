@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnInit, signal, HostListener } from '@angular/core';
+import { Component, computed, inject, OnInit, signal, HostListener, ViewChild, ElementRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import {
@@ -20,6 +20,9 @@ export class Home implements OnInit {
   private supabaseService = inject(SupabaseService);
   private router = inject(Router);
   private episodeService = inject(EpisodeService);
+
+  // Referência para o input de busca
+  @ViewChild('searchInput') searchInputRef!: ElementRef<HTMLInputElement>;
 
   // Estados para o mostruário do Supabase
   isLoading = signal(false);
@@ -45,8 +48,11 @@ export class Home implements OnInit {
   // Computed para verificar se está em modo de busca
   isInSearchMode = computed(() => this.searchQuery().trim().length > 0);
 
-  // Computed para mostrar estado de loading (normal ou busca)
-  showLoading = computed(() => this.isLoading() || this.isSearching());
+  // Computed para mostrar estado de loading (apenas loading principal, não busca)
+  showLoading = computed(() => this.isLoading());
+
+  // Computed para mostrar loading de dados (incluindo busca)
+  showDataLoading = computed(() => this.isLoading() || this.isSearching());
 
   // Computed para mostrar debug do cache (apenas em desenvolvimento)
   showCacheDebug = computed(() => {
@@ -161,8 +167,35 @@ export class Home implements OnInit {
 
     // Adiciona delay para evitar muitas requisições
     this.searchTimeout = setTimeout(() => {
+      // Preserva o foco antes de fazer a busca
+      const activeElement = document.activeElement;
+      const wasSearchInputFocused = activeElement === this.searchInputRef?.nativeElement;
+      
       this.searchAnimes();
-    }, 800); // 300ms de delay
+      
+      // Restaura o foco se estava no input de busca
+      if (wasSearchInputFocused && this.searchInputRef?.nativeElement) {
+        setTimeout(() => {
+          this.searchInputRef.nativeElement.focus();
+        }, 0);
+      }
+    }, 300); // Reduzindo delay para 300ms para melhor UX
+  }
+
+  // Busca imediata quando pressiona Enter
+  onSearchEnter(): void {
+    // Cancela timeout pendente
+    if (this.searchTimeout) {
+      clearTimeout(this.searchTimeout);
+    }
+    
+    // Busca imediatamente
+    this.currentPage.set(1);
+    if (this.isInSearchMode()) {
+      this.searchAnimes();
+    } else {
+      this.loadAnimes();
+    }
   }
 
   // Limpa a busca e volta para listagem normal
@@ -170,6 +203,11 @@ export class Home implements OnInit {
     this.searchQuery.set('');
     this.currentPage.set(1);
     this.loadAnimes();
+    
+    // Foca no input após limpar
+    setTimeout(() => {
+      this.searchInputRef?.nativeElement?.focus();
+    }, 0);
   }
 
   // Método auxiliar que escolhe entre busca ou carregamento normal
