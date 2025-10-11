@@ -2,16 +2,17 @@ import { Component, computed, inject, OnInit, signal, HostListener } from '@angu
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import {
-    SupabaseAnimeWithEpisodes,
-    SupabaseEpisode,
-    SupabaseService,
+  SupabaseAnimeWithEpisodes,
+  SupabaseEpisode,
+  SupabaseService,
 } from '../services/supabase.service';
 import { EpisodeService } from '../services/episode.service';
+import { CacheDebugComponent } from '../components/cache-debug.component';
+import { environment } from '../../environments/environment';
 
 @Component({
   selector: 'app-home',
-  standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, CacheDebugComponent],
   templateUrl: './home.html',
   styleUrl: './home.scss',
 })
@@ -46,6 +47,11 @@ export class Home implements OnInit {
 
   // Computed para mostrar estado de loading (normal ou busca)
   showLoading = computed(() => this.isLoading() || this.isSearching());
+
+  // Computed para mostrar debug do cache (apenas em desenvolvimento)
+  showCacheDebug = computed(() => {
+    return !environment.production || localStorage.getItem('show-cache-debug') === 'true';
+  });
 
   // Computed para informações de paginação
   pageInfo = computed(() => {
@@ -94,6 +100,9 @@ export class Home implements OnInit {
   ngOnInit() {
     // Carrega animes do Supabase na inicialização
     this.loadAnimes();
+    
+    // Pré-carrega cache se necessário (opcional)
+    // this.supabaseService.preloadCache();
   }
 
   // Carrega animes do Supabase
@@ -207,6 +216,30 @@ export class Home implements OnInit {
   // Computed para verificar se é possível navegar
   canGoNext = computed(() => this.currentPage() < this.totalPages());
   canGoPrevious = computed(() => this.currentPage() > 1);
+
+  // ===== MÉTODOS DE GERENCIAMENTO DE CACHE =====
+
+  /**
+   * Força atualização dos dados (ignora cache)
+   */
+  forceRefresh(): void {
+    if (this.isInSearchMode()) {
+      // Invalida cache de busca e busca novamente
+      this.supabaseService.invalidateSearchCache();
+      this.searchAnimes();
+    } else {
+      // Força atualização da página atual
+      this.supabaseService.forceRefreshAnimes(this.currentPage(), this.perPage()).subscribe({
+        next: (result) => {
+          this.animes.set(result.data);
+          this.totalAnimes.set(result.total);
+        },
+        error: (error) => {
+          console.error('Erro ao atualizar dados:', error);
+        }
+      });
+    }
+  }
 
   // Listener para tecla Escape
   @HostListener('document:keydown.escape')

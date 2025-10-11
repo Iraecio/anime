@@ -1,8 +1,9 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, signal, inject } from '@angular/core';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { environment } from '../../environments/environment';
 import { Database } from '../types/supabase';
 import { Observable, from, map, catchError, of, switchMap } from 'rxjs';
+import { CacheService } from './cache.service';
 
 export type SupabaseAnime = Database['public']['Tables']['animes']['Row'];
 export type SupabaseEpisode = Database['public']['Tables']['episodios']['Row'];
@@ -16,6 +17,7 @@ export type SupabaseAnimeWithEpisodes = SupabaseAnime & {
 })
 export class SupabaseService {
   private supabase: SupabaseClient<Database>;
+  private cacheService = inject(CacheService);
 
   // Signals para estado de loading e erros
   isLoading = signal(false);
@@ -26,12 +28,33 @@ export class SupabaseService {
       environment.apiUrl,
       environment.anonPublicKey
     );
+    
+    // Inicia a limpeza automática do cache
+    this.cacheService.startAutoCleanup();
   }
 
   // ===== MÉTODOS PARA ANIMES =====
   getAnimes(
     page: number = 1,
     limit: number = 50
+  ): Observable<{ data: SupabaseAnimeWithEpisodes[]; total: number }> {
+    // Cria chave única para o cache
+    const cacheKey = this.cacheService.createKey('animes', { page, limit });
+    
+    // Usa cache com TTL de 3 minutos para listagem geral
+    return this.cacheService.getOrSet(
+      cacheKey,
+      () => this.fetchAnimes(page, limit),
+      3 * 60 * 1000 // 3 minutos
+    );
+  }
+
+  /**
+   * Método privado para buscar animes sem cache
+   */
+  private fetchAnimes(
+    page: number,
+    limit: number
   ): Observable<{ data: SupabaseAnimeWithEpisodes[]; total: number }> {
     this.isLoading.set(true);
     this.error.set(null);
@@ -154,6 +177,21 @@ export class SupabaseService {
    * Busca um anime específico por ID
    */
   getAnimeById(id: number): Observable<SupabaseAnimeWithEpisodes | null> {
+    // Cria chave única para o cache
+    const cacheKey = this.cacheService.createKey('anime', { id });
+    
+    // Usa cache com TTL de 5 minutos para anime específico
+    return this.cacheService.getOrSet(
+      cacheKey,
+      () => this.fetchAnimeById(id),
+      5 * 60 * 1000 // 5 minutos
+    );
+  }
+
+  /**
+   * Método privado para buscar anime por ID sem cache
+   */
+  private fetchAnimeById(id: number): Observable<SupabaseAnimeWithEpisodes | null> {
     this.isLoading.set(true);
     this.error.set(null);
 
@@ -249,6 +287,29 @@ export class SupabaseService {
     query: string,
     page: number = 1,
     limit: number = 50
+  ): Observable<{ data: SupabaseAnimeWithEpisodes[]; total: number }> {
+    // Cria chave única para o cache da busca
+    const cacheKey = this.cacheService.createKey('search', { 
+      query: query.toLowerCase().trim(), 
+      page, 
+      limit 
+    });
+    
+    // Usa cache com TTL menor para buscas (1 minuto)
+    return this.cacheService.getOrSet(
+      cacheKey,
+      () => this.fetchSearchResults(query, page, limit),
+      1 * 60 * 1000 // 1 minuto
+    );
+  }
+
+  /**
+   * Método privado para buscar resultados sem cache
+   */
+  private fetchSearchResults(
+    query: string,
+    page: number,
+    limit: number
   ): Observable<{ data: SupabaseAnimeWithEpisodes[]; total: number }> {
     this.isLoading.set(true);
     this.error.set(null);
@@ -469,5 +530,76 @@ export class SupabaseService {
       }),
       catchError(() => of(0))
     );
+  }
+
+  // ===== MÉTODOS DE GERENCIAMENTO DE CACHE =====
+
+  /**
+   * Invalida todo o cache
+   */
+  clearCache(): void {
+    this.cacheService.clear();
+  }
+
+  /**
+   * Invalida cache específico de animes
+   */
+  invalidateAnimeCache(animeId?: number): void {
+    this.cacheService.invalidateAnimeCache(animeId);
+  }
+
+  /**
+   * Invalida cache de busca
+   */
+  invalidateSearchCache(): void {
+    this.cacheService.deletePattern(/^search/);
+  }
+
+  /**
+   * Força atualização de dados (ignora cache)
+   */
+  forceRefreshAnimes(page: number = 1, limit: number = 50): Observable<{ data: SupabaseAnimeWithEpisodes[]; total: number }> {
+    // Invalida cache específico desta página
+    const cacheKey = this.cacheService.createKey('animes', { page, limit });
+    this.cacheService.delete(cacheKey);
+    
+    // Busca dados novos
+    return this.getAnimes(page, limit);
+  }
+
+  /**
+   * Força atualização de um anime específico
+   */
+  forceRefreshAnime(id: number): Observable<SupabaseAnimeWithEpisodes | null> {
+    // Invalida cache do anime
+    this.invalidateAnimeCache(id);
+    
+    // Busca dados novos
+    return this.getAnimeById(id);
+  }
+
+  /**
+   * Obtém estatísticas do cache
+   */
+  getCacheStats() {
+    return this.cacheService.getStats();
+  }
+
+  /**
+   * Obtém taxa de hit do cache
+   */
+  getCacheHitRate(): number {
+    return this.cacheService.getHitRate();
+  }
+
+  /**
+   * Pré-carrega cache com dados frequentemente acessados
+   */
+  preloadCache(): void {
+    // Pré-carrega primeira página de animes
+    this.getAnimes(1, 50).subscribe();
+    
+    // Pré-carrega segunda página se necessário
+    this.getAnimes(2, 50).subscribe();
   }
 }
