@@ -6,15 +6,15 @@ import {
   SupabaseService,
   SupabaseEpisode,
   SupabaseAnime,
-} from '../services/supabase.service';
-import { EpisodeService } from '../services/episode.service';
+} from '../../services/supabase.service';
+import { EpisodeService } from '../../services/episode.service';
 
 @Component({
   selector: 'app-episode-player',
   standalone: true,
   imports: [CommonModule],
-  templateUrl: './episode-player.html',
-  styleUrl: './episode-player.scss',
+  templateUrl: './player.html',
+  styleUrl: './player.scss',
 })
 export class EpisodePlayer implements OnInit {
   private route = inject(ActivatedRoute);

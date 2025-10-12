@@ -8,10 +8,10 @@ export const routes: Routes = [
     },
     {
         path: 'home',
-        loadComponent: () => import('./home/home').then(m => m.Home)
+        loadComponent: () => import('./pages/home/home').then(m => m.Home)
     },
     {
         path: 'player/:animeSlug/:episodeId',
-        loadComponent: () => import('./episode-player/episode-player').then(m => m.EpisodePlayer)
+        loadComponent: () => import('./pages/player/player').then(m => m.EpisodePlayer)
     },
 ];

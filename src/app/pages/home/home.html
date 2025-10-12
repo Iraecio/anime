@@ -5,41 +5,28 @@
       <!-- Logo/Brand -->
       <div class="col-auto">
         <h1 class="h3 mb-0 text-white fw-bold">
-          <span class="text-danger">Animes</span> BR
+          <!-- Logo completo para telas grandes (md e acima) -->
+          <span class="d-none d-md-inline">
+            <span class="text-danger">Animes</span> BR
+          </span>
+          <!-- Logo compacto para telas pequenas (sm e abaixo) -->
+          <span class="d-inline d-md-none">
+            <span class="text-danger">A</span>BR
+          </span>
         </h1>
       </div>
 
       <!-- Search Bar (centered) -->
       <div class="col">
         <div class="d-flex justify-content-center">
-          <div class="search-container" style="width: 80%;">
-            <div class="input-group">
-              <input type="text" class="form-control bg-dark text-white border-secondary"
-                placeholder="Buscar animes por título..." [(ngModel)]="searchQuery" (input)="onSearchInput()"
-                (keyup.enter)="onSearchEnter()" #searchInput>
-              <div class="input-group-text bg-dark border-secondary">
-                @if (isSearching()) {
-                <div class="spinner-border spinner-border-sm text-primary" role="status">
-                  <span class="visually-hidden">Carregando...</span>
-                </div>
-                } @else if (searchQuery()) {
-                <button class="btn btn-sm text-danger border-0 p-1 d-flex align-items-center justify-content-center" 
-                        (click)="clearSearch()" title="Limpar busca">
-                  <!-- YouTube Clear/Close Icon -->
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" 
-                          fill="currentColor"/>
-                  </svg>
-                </button>
-                } @else {
-                <!-- YouTube Search Icon -->
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="text-muted">
-                  <path d="M20.87 20.17l-5.59-5.59C16.35 13.35 17 11.75 17 10c0-3.87-3.13-7-7-7s-7 3.13-7 7 3.13 7 7 7c1.75 0 3.35-.65 4.58-1.71l5.59 5.59.7-.71zM10 16c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6z" 
-                        fill="currentColor"/>
-                </svg>
-                }
-              </div>
-            </div>
+          <div class="search-wrapper" style="width: 100%;">
+            <app-search 
+              [config]="searchConfig"
+              [isSearching]="isSearching()"
+              [initialQuery]="searchQuery()"
+              (onSearch)="handleSearch($event)"
+              (onClear)="handleSearchClear()"
+            ></app-search>
           </div>
         </div>
       </div>
@@ -57,25 +44,7 @@
 </header>
 
 <div class="container-fluid bg-dark text-white min-vh-100 py-4" style="padding-top: 2rem !important;">
-
-  <!-- Header do mostruário -->
-  <div class="text-center mb-5">
-    <p class="lead text-white mb-4">
-      Mostrando {{ pageInfo().start }} - {{ pageInfo().end }} de {{ pageInfo().total }} {{ isInSearchMode() ?
-      'resultados'
-      : 'animes' }}
-    </p>
-
-    @if (showDataLoading()) {
-    <div class="d-flex justify-content-center align-items-center">
-      <div class="spinner-border text-primary me-2" role="status">
-        <span class="visually-hidden">Carregando...</span>
-      </div>
-      <span class="text-primary">{{ isInSearchMode() ? 'Buscando' : 'Carregando' }} animes...</span>
-    </div>
-    }
-  </div>
-
+ 
   <!-- Grid de animes -->
   <div class="row">
     @if (showDataLoading()) {
@@ -94,16 +63,16 @@
         <h3 class="h2 mb-3">Nenhum anime encontrado</h3>
         <p class="lead text-muted mb-4">Não encontramos animes com o termo "<span class="text-info">{{ searchQuery()
             }}</span>"</p>
-        <button class="btn btn-primary btn-lg" (click)="clearSearch()">
+        <button class="btn btn-primary btn-lg" (click)="handleSearchClear()">
           ← Ver todos os animes
         </button>
       </div>
     </div>
     } @else {
-    @for (anime of paginatedResult().data; track anime.id; let i = $index) {
+    @for (anime of animes(); track anime.id; let i = $index) {
     <div class="col-6 col-sm-4 col-md-3 col-lg-2 col-xl-2 mb-4">
-      <div class="netflix-card-container" 
-        (click)="handleAnimeCardClick(anime, i)"
+      <!-- TODO: criar um componente CardAnime -->
+      <div class="netflix-card-container" (click)="handleAnimeCardClick(anime, i)"
         (keydown.enter)="handleAnimeCardClick(anime, i)"
         (keydown.space)="handleAnimeCardClick(anime, i); $event.preventDefault()" tabindex="0" role="button"
         [attr.aria-expanded]="isAnimeExpanded(anime.id)" [attr.aria-label]="'Ver episódios de ' + anime.titulo"
@@ -124,7 +93,9 @@
                 <div class="adult-content-icon">
                   <!-- Ícone de olho fechado -->
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z" fill="currentColor"/>
+                    <path
+                      d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"
+                      fill="currentColor" />
                   </svg>
                   <span class="adult-content-text">Conteúdo +18</span>
                   <small class="adult-content-hint">Clique para revelar</small>
@@ -239,57 +210,11 @@
 
   <!-- Paginação -->
   <div class="d-flex flex-column align-items-center gap-3 mt-5">
-    <!-- Controles de paginação -->
-    <nav aria-label="Navegação da página">
-      <ul class="pagination pagination-lg mb-0">
-        <!-- Primeira página -->
-        <li class="page-item" [class.disabled]="!canGoPrevious()">
-          <button class="page-link bg-secondary border-secondary text-white" [disabled]="!canGoPrevious()"
-            (click)="goToFirstPage()" title="Primeira página">
-            ««
-          </button>
-        </li>
-
-        <!-- Página anterior -->
-        <li class="page-item" [class.disabled]="!canGoPrevious()">
-          <button class="page-link bg-secondary border-secondary text-white" [disabled]="!canGoPrevious()"
-            (click)="previousPage()" title="Página anterior">
-            ‹
-          </button>
-        </li>
-
-        <!-- Números das páginas -->
-        @for (pageNum of pageNumbers(); track pageNum) {
-        <li class="page-item" [class.active]="pageNum === currentPage()">
-          <button class="page-link" [class.bg-primary]="pageNum === currentPage()"
-            [class.border-primary]="pageNum === currentPage()" [class.bg-secondary]="pageNum !== currentPage()"
-            [class.border-secondary]="pageNum !== currentPage()" [class.text-white]="true" (click)="goToPage(pageNum)">
-            {{ pageNum }}
-          </button>
-        </li>
-        }
-
-        <!-- Próxima página -->
-        <li class="page-item" [class.disabled]="!canGoNext()">
-          <button class="page-link bg-secondary border-secondary text-white" [disabled]="!canGoNext()"
-            (click)="nextPage()" title="Próxima página">
-            ›
-          </button>
-        </li>
-
-        <!-- Última página -->
-        <li class="page-item" [class.disabled]="!canGoNext()">
-          <button class="page-link bg-secondary border-secondary text-white" [disabled]="!canGoNext()"
-            (click)="goToLastPage()" title="Última página">
-            »»
-          </button>
-        </li>
-      </ul>
-    </nav>
-
-    <!-- Informações da página -->
-    <div class="text-muted">
-      <small>Página {{ currentPage() }} de {{ totalPages() }}</small>
-    </div>
+    <app-paginacao 
+      [totalItems]="totalAnimes()" 
+      [itemsPerPage]="perPage()"
+      [currentPage]="currentPage()"
+      (onPageChange)="handlePageChange($event)"
+    ></app-paginacao>
   </div>
 </div>

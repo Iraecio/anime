@@ -1,28 +1,35 @@
-import { Component, computed, inject, OnInit, signal, HostListener, ViewChild, ElementRef } from '@angular/core';
+import { Component, computed, inject, OnInit, signal, HostListener, ChangeDetectionStrategy } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import {
   SupabaseAnimeWithEpisodes,
   SupabaseEpisode,
   SupabaseService,
-} from '../services/supabase.service';
-import { EpisodeService } from '../services/episode.service';
-import { CacheDebugComponent } from '../components/cache-debug.component';
-import { environment } from '../../environments/environment';
+} from '../../services/supabase.service';
+import { EpisodeService } from '../../services/episode.service';
+import { CacheDebugComponent } from '../../components/cache-debug.component';
+import { environment } from '../../../environments/environment';
+import { PaginacaoComponent } from './paginacao/paginacao';
+import { SearchComponent } from './header/search/search';
+import { SearchEvent } from './header/search/search.interface';
+import { PaginationEvent } from './paginacao/paginacao.interface';
 
 @Component({
   selector: 'app-home',
-  imports: [FormsModule, CacheDebugComponent],
+  imports: [
+    FormsModule,
+    CacheDebugComponent,
+    PaginacaoComponent,
+    SearchComponent,
+  ],
   templateUrl: './home.html',
   styleUrl: './home.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class Home implements OnInit {
   private supabaseService = inject(SupabaseService);
   private router = inject(Router);
   private episodeService = inject(EpisodeService);
-
-  // Referência para o input de busca
-  @ViewChild('searchInput') searchInputRef!: ElementRef<HTMLInputElement>;
 
   // Estados para o mostruário do Supabase
   isLoading = signal(false);
@@ -31,10 +38,16 @@ export class Home implements OnInit {
   currentPage = signal(1);
   perPage = signal(50);
 
-  // Estados para busca
   searchQuery = signal('');
   isSearching = signal(false);
-  searchTimeout: any = null;
+
+  // Configuração do componente de busca
+  searchConfig = {
+    debounceTime: 300,
+    minQueryLength: 0,
+    placeholder: 'Buscar animes por título...',
+    maxLength: 100
+  };
 
   // Estados para expansão
   expandedAnimeId = signal<number | null>(null);
@@ -45,12 +58,6 @@ export class Home implements OnInit {
   // Estados para controle de conteúdo +18
   revealedAdultContent = signal<Set<number>>(new Set());
 
-  // Computed properties para paginação
-  totalPages = computed(() => Math.ceil(this.totalAnimes() / this.perPage()));
-
-  // Computed para verificar se está em modo de busca
-  isInSearchMode = computed(() => this.searchQuery().trim().length > 0);
-
   // Computed para mostrar estado de loading (apenas loading principal, não busca)
   showLoading = computed(() => this.isLoading());
 
@@ -59,59 +66,45 @@ export class Home implements OnInit {
 
   // Computed para mostrar debug do cache (apenas em desenvolvimento)
   showCacheDebug = computed(() => {
-    return !environment.production || localStorage.getItem('show-cache-debug') === 'true';
-  });
-
-  // Computed para informações de paginação
-  pageInfo = computed(() => {
-    const start = (this.currentPage() - 1) * this.perPage() + 1;
-    const end = Math.min(
-      this.currentPage() * this.perPage(),
-      this.totalAnimes()
+    return false;
+    return (
+      !environment.production ||
+      localStorage.getItem('show-cache-debug') === 'true'
     );
-    return { start, end, total: this.totalAnimes() };
   });
 
-  // Computed para resultado paginado (compatibilidade)
-  paginatedResult = computed(() => ({
-    data: this.animes(),
-    total: this.totalAnimes(),
-    page: this.currentPage(),
-    perPage: this.perPage(),
-    totalPages: this.totalPages(),
-  }));
+  // Computed para verificar se está em modo de busca
+  isInSearchMode = computed(() => this.searchQuery().trim().length > 0);
+  
+  handleSearch(searchEvent: SearchEvent): void {
+    const { query, immediate } = searchEvent;
+    
+    if (query === this.searchQuery()) return; // Ignora se não mudou
 
-  // Array para mostrar os números das páginas na navegação
-  pageNumbers = computed(() => {
-    const total = this.totalPages();
-    const current = this.currentPage();
-    const delta = 2; // Quantas páginas mostrar antes e depois da atual
+    // Atualiza estado de busca e reseta página
+    this.searchQuery.set(query);
+    this.currentPage.set(1);
+    this.clearRevealedAdultContent();
+    
+    // Se é busca imediata (Enter), força execução
+    this.loadCurrentData();
+  }
 
-    let start = Math.max(1, current - delta);
-    let end = Math.min(total, current + delta);
-
-    // Ajusta para sempre mostrar pelo menos 5 páginas quando possível
-    if (end - start < 4) {
-      if (start === 1) {
-        end = Math.min(total, start + 4);
-      } else if (end === total) {
-        start = Math.max(1, end - 4);
-      }
-    }
-
-    const pages = [];
-    for (let i = start; i <= end; i++) {
-      pages.push(i);
-    }
-    return pages;
-  });
+  handleSearchClear(): void {
+    this.searchQuery.set('');
+    this.currentPage.set(1);
+    this.clearRevealedAdultContent();
+    this.loadAnimes(); // Volta para listagem normal
+  }
 
   ngOnInit() {
-    // Carrega animes do Supabase na inicialização
     this.loadAnimes();
-    
-    // Pré-carrega cache se necessário (opcional)
-    // this.supabaseService.preloadCache();
+  }
+
+  handlePageChange(event: PaginationEvent): void {
+    this.currentPage.set(event.page);
+    this.clearRevealedAdultContent(); // Limpa conteúdo adulto revelado ao mudar página
+    this.loadCurrentData();
   }
 
   // Carrega animes do Supabase
@@ -158,64 +151,6 @@ export class Home implements OnInit {
       });
   }
 
-  // Método chamado quando o usuário digita na busca
-  onSearchInput(): void {
-    // Cancela timeout anterior se existir
-    if (this.searchTimeout) {
-      clearTimeout(this.searchTimeout);
-    }
-
-    // Reseta para primeira página ao buscar
-    this.currentPage.set(1);
-    
-    // Limpa conteúdo adulto revelado ao fazer nova busca
-    this.clearRevealedAdultContent();
-
-    // Adiciona delay para evitar muitas requisições
-    this.searchTimeout = setTimeout(() => {
-      // Preserva o foco antes de fazer a busca
-      const activeElement = document.activeElement;
-      const wasSearchInputFocused = activeElement === this.searchInputRef?.nativeElement;
-      
-      this.searchAnimes();
-      
-      // Restaura o foco se estava no input de busca
-      if (wasSearchInputFocused && this.searchInputRef?.nativeElement) {
-        setTimeout(() => {
-          this.searchInputRef.nativeElement.focus();
-        }, 0);
-      }
-    }, 300); // Reduzindo delay para 300ms para melhor UX
-  }
-
-  // Busca imediata quando pressiona Enter
-  onSearchEnter(): void {
-    // Cancela timeout pendente
-    if (this.searchTimeout) {
-      clearTimeout(this.searchTimeout);
-    }
-    
-    // Busca imediatamente
-    this.currentPage.set(1);
-    if (this.isInSearchMode()) {
-      this.searchAnimes();
-    } else {
-      this.loadAnimes();
-    }
-  }
-
-  // Limpa a busca e volta para listagem normal
-  clearSearch(): void {
-    this.searchQuery.set('');
-    this.currentPage.set(1);
-    this.clearRevealedAdultContent(); // Limpa filtro ao limpar busca
-    this.loadAnimes();
-    
-    // Foca no input após limpar
-    setTimeout(() => {
-      this.searchInputRef?.nativeElement?.focus();
-    }, 0);
-  }
 
   // Método auxiliar que escolhe entre busca ou carregamento normal
   private loadCurrentData(): void {
@@ -226,64 +161,30 @@ export class Home implements OnInit {
     }
   }
 
-  // Métodos de navegação de página
-  goToPage(page: number): void {
-    if (page >= 1 && page <= this.totalPages()) {
-      this.currentPage.set(page);
-      this.clearRevealedAdultContent(); // Limpa filtro ao mudar página
-      this.loadCurrentData();
-    }
-  }
-
-  nextPage(): void {
-    if (this.currentPage() < this.totalPages()) {
-      this.currentPage.update((page) => page + 1);
-      this.clearRevealedAdultContent(); // Limpa filtro ao mudar página
-      this.loadCurrentData();
-    }
-  }
-
-  previousPage(): void {
-    if (this.currentPage() > 1) {
-      this.currentPage.update((page) => page - 1);
-      this.clearRevealedAdultContent(); // Limpa filtro ao mudar página
-      this.loadCurrentData();
-    }
-  }
-
-  goToFirstPage(): void {
-    this.currentPage.set(1);
-    this.clearRevealedAdultContent(); // Limpa filtro ao mudar página
-    this.loadCurrentData();
-  }
-
-  goToLastPage(): void {
-    this.currentPage.set(this.totalPages());
-    this.clearRevealedAdultContent(); // Limpa filtro ao mudar página
-    this.loadCurrentData();
-  }
-
   // ===== MÉTODOS PARA CONTROLE DE CONTEÚDO +18 =====
-  
+
   // Verifica se um anime tem conteúdo +18
   isAdultContent(anime: SupabaseAnimeWithEpisodes): boolean {
     // Verifica primeiro pelos gêneros se existirem
     if (anime.generos) {
-      const generos = Array.isArray(anime.generos) ? anime.generos : [anime.generos];
+      const generos = Array.isArray(anime.generos)
+        ? anime.generos
+        : [anime.generos];
       const hasAdultGenre = generos.some((genero: any) => {
         const nomeGenero = typeof genero === 'string' ? genero : genero?.nome;
-        return nomeGenero && (
-          nomeGenero.toLowerCase().includes('+18') ||
-          nomeGenero.toLowerCase().includes('adulto') ||
-          nomeGenero.toLowerCase().includes('ecchi') ||
-          nomeGenero.toLowerCase().includes('hentai') ||
-          nomeGenero.toLowerCase().includes('mature')
+        return (
+          nomeGenero &&
+          (nomeGenero.toLowerCase().includes('+18') ||
+            nomeGenero.toLowerCase().includes('adulto') ||
+            nomeGenero.toLowerCase().includes('ecchi') ||
+            nomeGenero.toLowerCase().includes('hentai') ||
+            nomeGenero.toLowerCase().includes('mature'))
         );
       });
-      
+
       if (hasAdultGenre) return true;
     }
-    
+
     // Para demonstração, detecta alguns animes como +18 baseado no título
     const titulo = anime.titulo?.toLowerCase() || '';
     return (
@@ -307,16 +208,16 @@ export class Home implements OnInit {
     if (event) {
       event.stopPropagation();
     }
-    
+
     const currentRevealed = this.revealedAdultContent();
     const newRevealed = new Set(currentRevealed);
-    
+
     if (newRevealed.has(animeId)) {
       newRevealed.delete(animeId);
     } else {
       newRevealed.add(animeId);
     }
-    
+
     this.revealedAdultContent.set(newRevealed);
   }
 
@@ -332,14 +233,10 @@ export class Home implements OnInit {
       this.toggleAdultContentReveal(anime.id!);
       return;
     }
-    
+
     // Caso contrário, comportamento normal (expandir/colapsar episódios)
     this.toggleAnimeExpansion(anime, index);
   }
-
-  // Computed para verificar se é possível navegar
-  canGoNext = computed(() => this.currentPage() < this.totalPages());
-  canGoPrevious = computed(() => this.currentPage() > 1);
 
   // ===== MÉTODOS DE GERENCIAMENTO DE CACHE =====
 
@@ -353,15 +250,17 @@ export class Home implements OnInit {
       this.searchAnimes();
     } else {
       // Força atualização da página atual
-      this.supabaseService.forceRefreshAnimes(this.currentPage(), this.perPage()).subscribe({
-        next: (result) => {
-          this.animes.set(result.data);
-          this.totalAnimes.set(result.total);
-        },
-        error: (error) => {
-          console.error('Erro ao atualizar dados:', error);
-        }
-      });
+      this.supabaseService
+        .forceRefreshAnimes(this.currentPage(), this.perPage())
+        .subscribe({
+          next: (result) => {
+            this.animes.set(result.data);
+            this.totalAnimes.set(result.total);
+          },
+          error: (error) => {
+            console.error('Erro ao atualizar dados:', error);
+          },
+        });
     }
   }
 
@@ -371,7 +270,7 @@ export class Home implements OnInit {
     if (this.expandedAnimeId()) {
       this.closeExpansion();
     }
-    
+
     // Também limpa conteúdo adulto revelado
     this.clearRevealedAdultContent();
   }
@@ -384,7 +283,7 @@ export class Home implements OnInit {
     const isAnimeCard = target.closest('.netflix-card-container');
     const isSearchInput = target.closest('.search-container');
     const isPagination = target.closest('.pagination');
-    
+
     if (!isAnimeCard && !isSearchInput && !isPagination) {
       this.clearRevealedAdultContent();
     }
@@ -408,7 +307,7 @@ export class Home implements OnInit {
       // Expande o anime
       this.expandedAnimeId.set(anime.id);
       this.expandedAnime.set(anime);
-      
+
       // Limpa outros animes com filtro revelado ao expandir
       this.clearRevealedAdultContent();
 
@@ -419,7 +318,6 @@ export class Home implements OnInit {
 
       // Carrega episódios do Supabase
       this.expandedEpisodes.set(anime['episodios'] || []); // Usa episódios já carregados se disponíveis
-       
     }
   }
 
@@ -453,23 +351,10 @@ export class Home implements OnInit {
     if (anime) {
       // Marca o episódio como assistido automaticamente
       this.episodeService.markAsWatched(episode.id);
-      
-      // Navega para o player
-      const animeSlug = this.createSlug(anime.titulo);
-      this.router.navigate(['/player', animeSlug, episode.id]);
-    }
-  }
 
-  // Cria um slug amigável para URL a partir do título
-  private createSlug(title: string): string {
-    return title
-      .toLowerCase()
-      .normalize('NFD') // Decompor caracteres com acentos
-      .replace(/[\u0300-\u036f]/g, '') // Remover diacríticos
-      .replace(/[^a-z0-9\s-]/g, '') // Remover caracteres especiais
-      .replace(/\s+/g, '-') // Substituir espaços por hífens
-      .replace(/-+/g, '-') // Remover hífens duplicados
-      .trim(); // Remover espaços em branco
+      // Navega para o player
+      this.router.navigate(['/player', anime.slug, episode.id]);
+    }
   }
 
   // ========================================
@@ -483,22 +368,22 @@ export class Home implements OnInit {
   getMatchPercentage(anime: SupabaseAnimeWithEpisodes): number {
     // Simula uma porcentagem baseada em critérios do anime
     let percentage = 75; // Base
-    
+
     // Mais episódios = maior match (até 95%)
     if (anime.episodios.length > 50) percentage = 95;
     else if (anime.episodios.length > 25) percentage = 90;
     else if (anime.episodios.length > 12) percentage = 85;
     else if (anime.episodios.length > 6) percentage = 80;
-    
+
     // Dublado adiciona pontos
     if (anime.dublado) {
       percentage = Math.min(98, percentage + 5);
     }
-    
+
     // Adiciona um pouco de aleatoriedade baseada no ID para variedade
     const randomFactor = (anime.id % 10) - 5; // -5 a +4
     percentage = Math.max(65, Math.min(98, percentage + randomFactor));
-    
+
     return Math.round(percentage);
   }
 }

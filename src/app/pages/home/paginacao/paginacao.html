@@ -1,0 +1,117 @@
+@if (shouldShowPagination()) {
+<div class="pagination-nav">
+  <!-- Controles de paginação -->
+  <nav 
+    aria-label="Navegação de páginas"
+    role="navigation"
+  >
+    <ul 
+      class="pagination mb-0"
+      [class.pagination-sm]="mergedConfig().size === 'sm'"
+      [class.pagination-lg]="mergedConfig().size === 'lg'"
+    >
+      @if (mergedConfig().showFirstLast) {
+        <!-- Primeira página -->
+        <li class="page-item" [class.disabled]="!paginationState().hasPrevious">
+          <button 
+            type="button"
+            class="page-link bg-secondary border-secondary text-white" 
+            [disabled]="!paginationState().hasPrevious"
+            [attr.aria-label]="getButtonAriaLabel('first')"
+            (click)="goToFirstPage()"
+            (keydown)="onKeyDown($event, goToFirstPage.bind(this))"
+          >
+            {{ mergedConfig().customLabels.first }}
+          </button>
+        </li>
+      }
+
+      @if (mergedConfig().showPrevNext) {
+        <!-- Página anterior -->
+        <li class="page-item" [class.disabled]="!paginationState().hasPrevious">
+          <button 
+            type="button"
+            class="page-link bg-secondary border-secondary text-white" 
+            [disabled]="!paginationState().hasPrevious"
+            [attr.aria-label]="getButtonAriaLabel('previous')"
+            (click)="previousPage()"
+            (keydown)="onKeyDown($event, previousPage.bind(this))"
+          >
+            {{ mergedConfig().customLabels.previous }}
+          </button>
+        </li>
+      }
+
+      <!-- Números das páginas -->
+      @for (pageNum of paginationState().pageNumbers; track pageNum) {
+        @if (pageNum === -1) {
+          <!-- Ellipsis -->
+          <li class="page-item disabled">
+            <span class="page-link bg-secondary border-secondary text-white" aria-hidden="true">…</span>
+          </li>
+        } @else {
+          <li class="page-item" [class.active]="pageNum === paginationState().currentPage">
+            <button 
+              type="button"
+              class="page-link text-white"
+              [class.bg-primary]="pageNum === paginationState().currentPage"
+              [class.border-primary]="pageNum === paginationState().currentPage" 
+              [class.bg-secondary]="pageNum !== paginationState().currentPage"
+              [class.border-secondary]="pageNum !== paginationState().currentPage"
+              [attr.aria-label]="getAriaLabel(pageNum)"
+              [attr.aria-current]="pageNum === paginationState().currentPage ? 'page' : null"
+              (click)="goToPage(pageNum)"
+              (keydown)="onKeyDown($event, goToPage.bind(this, pageNum))"
+            >
+              {{ pageNum }}
+            </button>
+          </li>
+        }
+      }
+
+      @if (mergedConfig().showPrevNext) {
+        <!-- Próxima página -->
+        <li class="page-item" [class.disabled]="!paginationState().hasNext">
+          <button 
+            type="button"
+            class="page-link bg-secondary border-secondary text-white" 
+            [disabled]="!paginationState().hasNext"
+            [attr.aria-label]="getButtonAriaLabel('next')"
+            (click)="nextPage()"
+            (keydown)="onKeyDown($event, nextPage.bind(this))"
+          >
+            {{ mergedConfig().customLabels.next }}
+          </button>
+        </li>
+      }
+
+      @if (mergedConfig().showFirstLast) {
+        <!-- Última página -->
+        <li class="page-item" [class.disabled]="!paginationState().hasNext">
+          <button 
+            type="button"
+            class="page-link bg-secondary border-secondary text-white" 
+            [disabled]="!paginationState().hasNext"
+            [attr.aria-label]="getButtonAriaLabel('last')"
+            (click)="goToLastPage()"
+            (keydown)="onKeyDown($event, goToLastPage.bind(this))"
+          >
+            {{ mergedConfig().customLabels.last }}
+          </button>
+        </li>
+      }
+    </ul>
+  </nav>
+
+  @if (mergedConfig().showInfo) {
+    <!-- Informações da página -->
+    <div 
+      class="pagination-info"
+      role="status"
+      aria-live="polite"
+    >
+      {{ paginationInfo() }}
+    </div>
+  }
+</div>
+}
