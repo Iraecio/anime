@@ -13,6 +13,8 @@ import { PaginacaoComponent } from './paginacao/paginacao';
 import { SearchComponent } from './header/search/search';
 import { SearchEvent } from './header/search/search.interface';
 import { PaginationEvent } from './paginacao/paginacao.interface';
+import { AnimeCard, AnimeCardEvents } from './components/anime-card/anime-card';
+import { CardService } from '../../services/card-service.service';
 
 @Component({
   selector: 'app-home',
@@ -21,6 +23,7 @@ import { PaginationEvent } from './paginacao/paginacao.interface';
     CacheDebugComponent,
     PaginacaoComponent,
     SearchComponent,
+    AnimeCard,
   ],
   templateUrl: './home.html',
   styleUrl: './home.scss',
@@ -30,6 +33,7 @@ export class Home implements OnInit {
   private supabaseService = inject(SupabaseService);
   private router = inject(Router);
   private episodeService = inject(EpisodeService);
+  private cardService = inject(CardService);
 
   // Estados para o mostruário do Supabase
   isLoading = signal(false);
@@ -49,14 +53,11 @@ export class Home implements OnInit {
     maxLength: 100
   };
 
-  // Estados para expansão
-  expandedAnimeId = signal<number | null>(null);
-  expandedEpisodes = signal<SupabaseEpisode[]>([]);
-  expandedAnime = signal<SupabaseAnimeWithEpisodes | null>(null);
-  expandDirection = signal<'left' | 'right'>('right');
-
-  // Estados para controle de conteúdo +18
-  revealedAdultContent = signal<Set<number>>(new Set());
+  // Computed properties do CardService
+  readonly expandedAnimeId = computed(() => this.cardService.currentExpandedAnimeId());
+  readonly expandedEpisodes = computed(() => this.cardService.currentExpandedEpisodes());
+  readonly expandedAnime = computed(() => this.cardService.currentExpandedAnime());
+  readonly hasExpandedCard = computed(() => this.cardService.hasExpandedCard());
 
   // Computed para mostrar estado de loading (apenas loading principal, não busca)
   showLoading = computed(() => this.isLoading());
@@ -84,7 +85,7 @@ export class Home implements OnInit {
     // Atualiza estado de busca e reseta página
     this.searchQuery.set(query);
     this.currentPage.set(1);
-    this.clearRevealedAdultContent();
+    this.cardService.clearAllState();
     
     // Se é busca imediata (Enter), força execução
     this.loadCurrentData();
@@ -93,7 +94,7 @@ export class Home implements OnInit {
   handleSearchClear(): void {
     this.searchQuery.set('');
     this.currentPage.set(1);
-    this.clearRevealedAdultContent();
+    this.cardService.clearAllState();
     this.loadAnimes(); // Volta para listagem normal
   }
 
@@ -103,7 +104,7 @@ export class Home implements OnInit {
 
   handlePageChange(event: PaginationEvent): void {
     this.currentPage.set(event.page);
-    this.clearRevealedAdultContent(); // Limpa conteúdo adulto revelado ao mudar página
+    this.cardService.clearAllState(); // Limpa estado dos cards ao mudar página
     this.loadCurrentData();
   }
 
@@ -161,81 +162,46 @@ export class Home implements OnInit {
     }
   }
 
-  // ===== MÉTODOS PARA CONTROLE DE CONTEÚDO +18 =====
+  // ===== EVENT HANDLERS PARA ANIME CARDS =====
 
-  // Verifica se um anime tem conteúdo +18
+  // Handler para clique no card (via AnimeCard component)
+  handleAnimeCardClick(event: AnimeCardEvents['cardClick']): void {
+    // O card component já gerencia a lógica de expansão
+    console.log('Card clicked:', event.anime.titulo);
+  }
+
+  // Handler para clique em episódio
+  handleEpisodeClick(episode: SupabaseEpisode): void {
+    const anime = this.expandedAnime();
+    if (anime) {
+      // Marca o episódio como assistido automaticamente
+      this.episodeService.markAsWatched(episode.id);
+
+      // Navega para o player
+      this.router.navigate(['/player', anime.slug, episode.id]);
+    }
+  }
+
+  // Handler para toggle de conteúdo adulto
+  handleAdultContentToggle(event: AnimeCardEvents['adultContentToggle']): void {
+    console.log('Adult content toggled:', event.animeId, 'revealed:', event.revealed);
+  }
+
+  // Métodos de utilidade que delegam para o CardService
   isAdultContent(anime: SupabaseAnimeWithEpisodes): boolean {
-    // Verifica primeiro pelos gêneros se existirem
-    if (anime.generos) {
-      const generos = Array.isArray(anime.generos)
-        ? anime.generos
-        : [anime.generos];
-      const hasAdultGenre = generos.some((genero: any) => {
-        const nomeGenero = typeof genero === 'string' ? genero : genero?.nome;
-        return (
-          nomeGenero &&
-          (nomeGenero.toLowerCase().includes('+18') ||
-            nomeGenero.toLowerCase().includes('adulto') ||
-            nomeGenero.toLowerCase().includes('ecchi') ||
-            nomeGenero.toLowerCase().includes('hentai') ||
-            nomeGenero.toLowerCase().includes('mature'))
-        );
-      });
-
-      if (hasAdultGenre) return true;
-    }
-
-    // Para demonstração, detecta alguns animes como +18 baseado no título
-    const titulo = anime.titulo?.toLowerCase() || '';
-    return (
-      titulo.includes('nukitashi') ||
-      titulo.includes('bad girl') ||
-      titulo.includes('panty') ||
-      titulo.includes('stocking') ||
-      titulo.includes('ecchi') ||
-      titulo.includes('hentai') ||
-      titulo.includes('+18')
-    );
+    return this.cardService.isAdultContent(anime);
   }
 
-  // Verifica se o conteúdo +18 foi revelado
   isAdultContentRevealed(animeId: number): boolean {
-    return this.revealedAdultContent().has(animeId);
+    return this.cardService.isAdultContentRevealed(animeId);
   }
 
-  // Alterna a revelação do conteúdo +18
-  toggleAdultContentReveal(animeId: number, event?: Event): void {
-    if (event) {
-      event.stopPropagation();
-    }
-
-    const currentRevealed = this.revealedAdultContent();
-    const newRevealed = new Set(currentRevealed);
-
-    if (newRevealed.has(animeId)) {
-      newRevealed.delete(animeId);
-    } else {
-      newRevealed.add(animeId);
-    }
-
-    this.revealedAdultContent.set(newRevealed);
+  isAnimeExpanded(animeId: number): boolean {
+    return this.cardService.isAnimeExpanded(animeId);
   }
 
-  // Limpa todo o conteúdo adulto revelado
-  clearRevealedAdultContent(): void {
-    this.revealedAdultContent.set(new Set());
-  }
-
-  // Lida com o clique no card do anime (considerando conteúdo +18)
-  handleAnimeCardClick(anime: SupabaseAnimeWithEpisodes, index: number): void {
-    // Se é conteúdo adulto e não foi revelado, revela primeiro
-    if (this.isAdultContent(anime) && !this.isAdultContentRevealed(anime.id!)) {
-      this.toggleAdultContentReveal(anime.id!);
-      return;
-    }
-
-    // Caso contrário, comportamento normal (expandir/colapsar episódios)
-    this.toggleAnimeExpansion(anime, index);
+  getMatchPercentage(anime: SupabaseAnimeWithEpisodes): number {
+    return this.cardService.getMatchPercentage(anime);
   }
 
   // ===== MÉTODOS DE GERENCIAMENTO DE CACHE =====
@@ -267,12 +233,12 @@ export class Home implements OnInit {
   // Listener para tecla Escape
   @HostListener('document:keydown.escape')
   onEscapePress(): void {
-    if (this.expandedAnimeId()) {
-      this.closeExpansion();
+    if (this.hasExpandedCard()) {
+      this.cardService.collapseAnime();
     }
 
     // Também limpa conteúdo adulto revelado
-    this.clearRevealedAdultContent();
+    this.cardService.clearRevealedAdultContent();
   }
 
   // Listener para cliques no documento (reset do filtro +18)
@@ -285,7 +251,7 @@ export class Home implements OnInit {
     const isPagination = target.closest('.pagination');
 
     if (!isAnimeCard && !isSearchInput && !isPagination) {
-      this.clearRevealedAdultContent();
+      this.cardService.clearRevealedAdultContent();
     }
   }
 
@@ -294,43 +260,9 @@ export class Home implements OnInit {
     this.router.navigate(['/anime', animeId]);
   }
 
-  // Método para expandir/colapsar anime
-  toggleAnimeExpansion(anime: SupabaseAnimeWithEpisodes, index: number): void {
-    const currentExpanded = this.expandedAnimeId();
-
-    if (currentExpanded === anime.id) {
-      // Se já está expandido, colapsa
-      this.expandedAnimeId.set(null);
-      this.expandedEpisodes.set([]);
-      this.expandedAnime.set(null);
-    } else {
-      // Expande o anime
-      this.expandedAnimeId.set(anime.id);
-      this.expandedAnime.set(anime);
-
-      // Limpa outros animes com filtro revelado ao expandir
-      this.clearRevealedAdultContent();
-
-      // Determina direção da expansão baseado na posição na grid (5 por linha)
-      const positionInRow = index % 5;
-      const direction = positionInRow >= 3 ? 'left' : 'right'; // Se está nas últimas 2 posições, expande para esquerda
-      this.expandDirection.set(direction);
-
-      // Carrega episódios do Supabase
-      this.expandedEpisodes.set(anime['episodios'] || []); // Usa episódios já carregados se disponíveis
-    }
-  }
-
-  // Verifica se um anime está expandido
-  isAnimeExpanded(animeId: number): boolean {
-    return this.expandedAnimeId() === animeId;
-  }
-
-  // Fecha a expansão
+  // Método de utilidade para fechar expansão (usado no template)
   closeExpansion(): void {
-    this.expandedAnimeId.set(null);
-    this.expandedEpisodes.set([]);
-    this.expandedAnime.set(null);
+    this.cardService.collapseAnime();
   }
 
   // Marca episódio como assistido (usando sistema local por enquanto)
@@ -361,29 +293,5 @@ export class Home implements OnInit {
   // NETFLIX-STYLE HELPER METHODS
   // ========================================
 
-  /**
-   * Gera uma porcentagem de "match" para o anime baseado no número de episódios
-   * e se é dublado (simulado para efeito visual)
-   */
-  getMatchPercentage(anime: SupabaseAnimeWithEpisodes): number {
-    // Simula uma porcentagem baseada em critérios do anime
-    let percentage = 75; // Base
 
-    // Mais episódios = maior match (até 95%)
-    if (anime.episodios.length > 50) percentage = 95;
-    else if (anime.episodios.length > 25) percentage = 90;
-    else if (anime.episodios.length > 12) percentage = 85;
-    else if (anime.episodios.length > 6) percentage = 80;
-
-    // Dublado adiciona pontos
-    if (anime.dublado) {
-      percentage = Math.min(98, percentage + 5);
-    }
-
-    // Adiciona um pouco de aleatoriedade baseada no ID para variedade
-    const randomFactor = (anime.id % 10) - 5; // -5 a +4
-    percentage = Math.max(65, Math.min(98, percentage + randomFactor));
-
-    return Math.round(percentage);
-  }
 }

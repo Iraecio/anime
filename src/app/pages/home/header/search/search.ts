@@ -17,6 +17,7 @@ import { SearchConfig, SearchEvent } from './search.interface';
 @Component({
   selector: 'app-search',
   imports: [CommonModule, FormsModule],
+  styleUrls: ['./search.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '[class.search-loading]': 'isSearching()',
@@ -92,45 +93,6 @@ import { SearchConfig, SearchEvent } from './search.interface';
       </div>
     </div>
   `,
-  styles: [
-    `
-      :host {
-        display: block;
-        width: 100%;
-      }
-
-      .search-container {
-        width: 100%;
-        transition: all 0.2s ease-in-out;
-      }
-
-      .form-control {
-        transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-      }
-
-      .form-control:focus {
-        border-color: #0d6efd;
-        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-      }
-
-      .btn {
-        transition: all 0.2s ease-in-out;
-      }
-
-      .btn:hover {
-        transform: scale(1.1);
-      }
-
-      :host.search-loading .input-group-text {
-        background-color: #1e2124 !important;
-      }
-
-      .spinner-border-sm {
-        width: 1rem;
-        height: 1rem;
-      }
-    `,
-  ],
 })
 export class SearchComponent {
   // Inputs

@@ -14,69 +14,13 @@ import { PaginationConfig, PaginationEvent, PaginationState } from './paginacao.
   selector: 'app-paginacao',
   imports: [CommonModule],
   templateUrl: './paginacao.html',
+  styleUrls: ['./paginacao.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '[class.pagination-wrapper]': 'true',
     '[class.pagination-sm]': 'config().size === "sm"',
     '[class.pagination-lg]': 'config().size === "lg"',
   },
-  styles: [`
-    :host {
-      display: block;
-    }
-    
-    .pagination-wrapper {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 1rem;
-    }
-    
-    .pagination-nav {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.75rem;
-    }
-    
-    .pagination-info {
-      text-align: center;
-      font-size: 0.875rem;
-      color: var(--bs-text-muted, #6c757d);
-    }
-    
-    @media (min-width: 768px) {
-      .pagination-nav {
-        flex-direction: row;
-        justify-content: space-between;
-        width: 100%;
-        max-width: 600px;
-      }
-      
-      .pagination-info {
-        order: 2;
-        flex: 0 0 auto;
-      }
-      
-      .pagination {
-        order: 1;
-        margin: 0;
-      }
-    }
-    
-    .page-link {
-      transition: all 0.2s ease-in-out;
-    }
-    
-    .page-link:hover:not(:disabled) {
-      transform: translateY(-1px);
-    }
-    
-    .page-link:focus {
-      box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-      z-index: 3;
-    }
-  `],
 })
 export class PaginacaoComponent {
   // Inputs

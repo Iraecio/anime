@@ -1,0 +1,637 @@
+// ========================================
+// NETFLIX-STYLE ANIME CARDS WITH 3D FLIP
+// ========================================
+
+// Netflix Color Palette
+$netflix-red: #e50914;
+$netflix-dark-red: #b81d24;
+$netflix-black: #141414;
+$netflix-dark-gray: #221f1f;
+$netflix-gray: #333;
+$netflix-light-gray: #564d4d;
+$netflix-white: #ffffff;
+$netflix-off-white: #f3f3f3;
+
+// Card Dimensions
+$card-width: 100%;
+$card-height: 420px;
+$card-border-radius: 8px;
+
+// Netflix Card Container
+.netflix-card-container {
+  perspective: 1000px;
+  cursor: pointer;
+  height: $card-height;
+  
+  &:focus {
+    outline: 3px solid $netflix-red;
+    outline-offset: 4px;
+    border-radius: $card-border-radius;
+  }
+}
+
+// Netflix Card with 3D flip effect
+.netflix-card {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  border-radius: $card-border-radius;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  
+  &:hover:not(.flipped) {
+    transform: scale(1.05) translateY(-8px);
+    box-shadow: 0 12px 24px rgba(229, 9, 20, 0.4);
+  }
+  
+  &.flipped {
+    transform: rotateY(180deg);
+  }
+}
+
+// Common styles for both card sides
+.netflix-card-front,
+.netflix-card-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  border-radius: $card-border-radius;
+  overflow: hidden;
+  background: linear-gradient(145deg, $netflix-dark-gray 0%, $netflix-black 100%);
+}
+
+// ========================================
+// CARD FRONT (Main View)
+// ========================================
+
+.netflix-card-front {
+  display: flex;
+  flex-direction: column;
+}
+
+.netflix-card-image {
+  position: relative;
+  height: 70%;
+  overflow: hidden;
+  
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+  }
+}
+
+.netflix-card-gradient {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60%;
+  background: linear-gradient(
+    to top,
+    rgba(20, 20, 20, 0.9) 0%,
+    rgba(20, 20, 20, 0.7) 30%,
+    rgba(20, 20, 20, 0.3) 60%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+.netflix-play-button {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 60px;
+  height: 60px;
+  background: rgba(229, 9, 20, 0.9);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  opacity: 0;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(4px);
+  
+  svg {
+    width: 24px;
+    height: 24px;
+    margin-left: 3px;
+  }
+  
+  .netflix-card-container:hover & {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+}
+
+.netflix-rating {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  
+  .netflix-match {
+    background: $netflix-red;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+}
+
+.netflix-card-info {
+  padding: 16px;
+  height: 30%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: linear-gradient(to bottom, rgba(20, 20, 20, 0.95), $netflix-black);
+}
+
+.netflix-title {
+  color: $netflix-white;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 0 0 8px 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.netflix-meta {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+  
+  .netflix-episodes-count {
+    color: $netflix-off-white;
+    font-size: 0.8rem;
+    font-weight: 500;
+  }
+  
+  .netflix-dubbed {
+    background: $netflix-red;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    font-weight: 600;
+  }
+  
+  .netflix-year {
+    background: $netflix-gray;
+    color: $netflix-off-white;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    border: 1px solid $netflix-light-gray;
+  }
+}
+
+.netflix-genres {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  
+  .netflix-genre {
+    color: $netflix-light-gray;
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    border: 1px solid $netflix-light-gray;
+    border-radius: 12px;
+    
+    &.netflix-genre-more {
+      background-color: $netflix-light-gray;
+      color: $netflix-black;
+      border-color: $netflix-light-gray;
+      font-weight: 500;
+    }
+  }
+}
+
+// ========================================
+// CARD BACK (Episodes List)
+// ========================================
+
+.netflix-card-back {
+  transform: rotateY(180deg);
+  display: flex;
+  flex-direction: column;
+}
+
+.netflix-episodes-header {
+  padding: 16px;
+  background: linear-gradient(135deg, $netflix-red 0%, $netflix-dark-red 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 70px;
+  
+  .netflix-close-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    
+    &:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: scale(1.1);
+    }
+    
+    svg {
+      width: 18px;
+      height: 18px;
+    }
+  }
+}
+
+.netflix-episodes-title {
+  flex: 1;
+  margin: 0 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.netflix-total-episodes {
+  font-size: 0.8rem;
+  opacity: 0.9;
+}
+
+.netflix-episodes-list {
+  flex: 1;
+  padding: 8px;
+  overflow-y: auto;
+  background: $netflix-black;
+  
+  // Custom scrollbar
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: $netflix-red;
+    border-radius: 2px;
+  }
+}
+
+.netflix-no-episodes {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: $netflix-light-gray;
+  
+  svg {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 12px;
+    opacity: 0.5;
+  }
+  
+  p {
+    margin: 0;
+    font-size: 0.9rem;
+  }
+}
+
+.netflix-episode-item {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  margin-bottom: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  
+  &:hover {
+    background: rgba(229, 9, 20, 0.1);
+    border-color: $netflix-red;
+    transform: translateX(4px);
+  }
+  
+  &:focus {
+    outline: 2px solid $netflix-red;
+    outline-offset: 2px;
+  }
+  
+  &.watched {
+    background: rgba(34, 197, 94, 0.1);
+    border-color: rgba(34, 197, 94, 0.3);
+    
+    .netflix-episode-number span {
+      background: #22c55e;
+    }
+  }
+}
+
+.netflix-episode-number {
+  position: relative;
+  margin-right: 12px;
+  
+  span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: $netflix-red;
+    color: white;
+    border-radius: 50%;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+  
+  .netflix-watched-indicator {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 16px;
+    height: 16px;
+    background: #22c55e;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    svg {
+      width: 10px;
+      height: 10px;
+      color: white;
+    }
+  }
+}
+
+.netflix-episode-info {
+  flex: 1;
+  
+  .netflix-episode-title {
+    color: $netflix-white;
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin: 0 0 4px 0;
+    line-height: 1.2;
+  }
+  
+  .netflix-episode-duration {
+    color: $netflix-light-gray;
+    font-size: 0.75rem;
+    margin: 0;
+  }
+}
+
+.netflix-episode-play {
+  width: 24px;
+  height: 24px;
+  color: $netflix-white;
+  opacity: 0.7;
+  transition: all 0.2s ease;
+  
+  .netflix-episode-item:hover & {
+    opacity: 1;
+    color: $netflix-red;
+    transform: scale(1.1);
+  }
+  
+  svg {
+    width: 100%;
+    height: 100%;
+  }
+}
+
+// ========================================
+// ADULT CONTENT (+18) OVERLAY STYLES
+// ========================================
+
+.adult-content-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.8);
+  transition: all 0.3s ease;
+  
+  &:hover {
+    background: rgba(0, 0, 0, 0.9);
+    
+    .adult-content-icon {
+      transform: scale(1.1);
+    }
+  }
+}
+
+.adult-content-blur {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.adult-content-icon {
+  position: relative;
+  z-index: 11;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: white;
+  transition: transform 0.3s ease;
+  padding: 20px;
+  
+  svg {
+    margin-bottom: 12px;
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
+    opacity: 0.9;
+  }
+  
+  .adult-content-text {
+    font-weight: bold;
+    font-size: 1.1rem;
+    margin-bottom: 8px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.7);
+    color: $netflix-red;
+  }
+  
+  .adult-content-hint {
+    font-size: 0.8rem;
+    opacity: 0.8;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+  }
+}
+
+// Card states for adult content
+.netflix-card-container {
+  // Host class bindings
+  &.adult-content-card {
+    // Card styling for adult content
+    .netflix-card {
+      border: 1px solid rgba(229, 9, 20, 0.3);
+    }
+  }
+  
+  &.adult-content-revealed {
+    .netflix-card-image::after {
+      content: '18+';
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: rgba(0, 0, 0, 0.9);
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: bold;
+      text-shadow: none;
+      z-index: 15;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    }
+  }
+  
+  &.card-expanded {
+    .netflix-card {
+      transform: rotateY(180deg);
+    }
+  }
+}
+
+// ========================================
+// RESPONSIVE ADJUSTMENTS
+// ========================================
+
+// Mobile adjustments
+@media (max-width: 768px) {
+  .netflix-card-container {
+    height: 360px;
+  }
+  
+  .netflix-title {
+    font-size: 0.9rem;
+  }
+  
+  .netflix-play-button {
+    width: 50px;
+    height: 50px;
+    
+    svg {
+      width: 20px;
+      height: 20px;
+    }
+  }
+  
+  .netflix-episodes-header {
+    min-height: 60px;
+    padding: 12px;
+  }
+  
+  .netflix-episode-item {
+    padding: 10px;
+  }
+  
+  .adult-content-icon {
+    padding: 15px;
+    
+    svg {
+      width: 36px;
+      height: 36px;
+      margin-bottom: 8px;
+    }
+    
+    .adult-content-text {
+      font-size: 0.9rem;
+      margin-bottom: 6px;
+    }
+    
+    .adult-content-hint {
+      font-size: 0.7rem;
+    }
+  }
+}
+
+// Small screens
+@media (max-width: 576px) {
+  .netflix-card-container {
+    height: 320px;
+  }
+  
+  .netflix-card-info {
+    padding: 12px;
+  }
+  
+  .netflix-title {
+    font-size: 0.8rem;
+  }
+  
+  .netflix-episode-number span {
+    width: 28px;
+    height: 28px;
+    font-size: 0.75rem;
+  }
+  
+  .adult-content-icon {
+    padding: 10px;
+    
+    svg {
+      width: 32px;
+      height: 32px;
+      margin-bottom: 6px;
+    }
+    
+    .adult-content-text {
+      font-size: 0.8rem;
+      margin-bottom: 4px;
+    }
+    
+    .adult-content-hint {
+      font-size: 0.65rem;
+    }
+  }
+}
+
+// Fix line-clamp compatibility
+.netflix-title,
+.netflix-episodes-title {
+  line-clamp: 2;
+}
