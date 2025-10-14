@@ -1,0 +1,40 @@
+// CSS mínimo - usando principalmente classes Bootstrap
+.scrollbar-hidden {
+  // Esconder scrollbar mas manter funcionalidade de scroll
+  scrollbar-width: none; // Firefox
+  -ms-overflow-style: none; // IE and Edge
+
+  &::-webkit-scrollbar {
+    display: none; // Chrome/Safari
+  }
+
+  // Garantir que o overflow vertical seja visível para não cortar o hover dos cards
+  overflow-y: visible !important;
+}
+
+// Container do anime-row precisa permitir overflow para não cortar hover
+.anime-row-container {
+  overflow: visible;
+}
+
+// Hover effects nos botões
+.btn:hover:not(:disabled) {
+  transform: translateY(-50%) scale(1.05) !important;
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(-50%) scale(0.95) !important;
+}
+
+// Transições suaves
+.btn {
+  transition: all 0.2s ease;
+}
+
+:deep(.netflix-card-container) {
+  overflow: visible;
+}
+
+:deep(.row) {
+  overflow: visible;
+}

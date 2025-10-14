@@ -15,6 +15,7 @@ import { SearchEvent } from './header/search/search.interface';
 import { PaginationEvent } from './paginacao/paginacao.interface';
 import { AnimeCard, AnimeCardEvents } from './components/anime-card/anime-card';
 import { CardService } from '../../services/card-service.service';
+import { AnimeRow } from './components/anime-row/anime-row';
 
 @Component({
   selector: 'app-home',
@@ -24,6 +25,7 @@ import { CardService } from '../../services/card-service.service';
     PaginacaoComponent,
     SearchComponent,
     AnimeCard,
+    AnimeRow,
   ],
   templateUrl: './home.html',
   styleUrl: './home.scss',
@@ -76,6 +78,31 @@ export class Home implements OnInit {
 
   // Computed para verificar se está em modo de busca
   isInSearchMode = computed(() => this.searchQuery().trim().length > 0);
+
+  // Computed properties para categorizar animes em rows
+  readonly recentAnimes = computed(() => {
+    return this.animes().slice(0, 20); // Primeiros 20 animes
+  });
+
+  readonly actionAnimes = computed(() => {
+    return this.animes().filter(anime => 
+      anime.generos?.some(genre => genre.toLowerCase().includes('action') || genre.toLowerCase().includes('ação'))
+    ).slice(0, 12);
+  });
+
+  readonly romanceAnimes = computed(() => {
+    return this.animes().filter(anime => 
+      anime.generos?.some(genre => genre.toLowerCase().includes('romance'))
+    ).slice(0, 12);
+  });
+
+  readonly completedAnimes = computed(() => {
+    return this.animes().filter(anime => anime.status === 'completed').slice(0, 12);
+  });
+
+  readonly ongoingAnimes = computed(() => {
+    return this.animes().filter(anime => anime.status === 'ongoing').slice(0, 12);
+  });
   
   handleSearch(searchEvent: SearchEvent): void {
     const { query, immediate } = searchEvent;

@@ -1,0 +1,72 @@
+<div class="container-fluid px-0 mb-4">
+  <!-- Título da seção -->
+  @if (showTitle()) {
+  <div class="row mx-0 mb-3">
+    <div class="col px-3">
+      <h2 class="h4 text-white fw-semibold mb-0">{{ title() }}</h2>
+    </div>
+  </div>
+  }
+
+  <!-- Container da row com controles -->
+  @if (hasAnimes()) {
+  <div class="position-relative">
+    <!-- Botão de scroll para esquerda - só aparece quando pode scrollar -->
+    @if (canScrollLeft()) {
+    <button 
+      class="btn btn-dark rounded-circle position-absolute d-flex align-items-center justify-content-center"
+      style="left: 10px; top: calc(50% + 10px); transform: translateY(-50%); z-index: 10; width: 40px; height: 40px; backdrop-filter: blur(4px);"
+      [disabled]="isScrolling()"
+      (click)="scrollLeft()"
+      type="button"
+      aria-label="Scroll para esquerda">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+      </svg>
+    </button>
+    }
+
+    <!-- Container de scroll horizontal com espaço para efeito de hover -->
+    <div class="scrollbar-hidden" 
+         #scrollContainer
+         (scroll)="onScroll()"
+         style="overflow-x: auto; overflow-y: visible; scroll-behavior: smooth; padding: 20px 0;">
+      
+      <!-- Row com os cards usando exatamente as mesmas classes da home -->
+      <div class="row flex-nowrap mx-0 g-3" style="min-width: max-content;">
+        @for (anime of animes(); track anime.id; let i = $index) {
+        <div class="col-12 col-sm-4 col-md-3 col-lg-2 col-xl-2 flex-shrink-0">
+          <app-card-anime 
+            [anime]="anime" 
+            [index]="i"
+            (onCardClick)="handleAnimeClick($event)"
+            (onEpisodeClick)="handleEpisodeClick($event)"
+            (onAdultContentToggle)="handleAdultContentToggle($event)">
+          </app-card-anime>
+        </div>
+        }
+      </div>
+    </div>
+
+    <!-- Botão de scroll para direita - só aparece quando pode scrollar -->
+    @if (canScrollRight()) {
+    <button 
+      class="btn btn-dark rounded-circle position-absolute d-flex align-items-center justify-content-center"
+      style="right: 10px; top: 50%; transform: translateY(-50%); z-index: 10; width: 40px; height: 40px; backdrop-filter: blur(4px);"
+      [disabled]="isScrolling()"
+      (click)="scrollRight()"
+      type="button"
+      aria-label="Scroll para direita">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+      </svg>
+    </button>
+    }
+  </div>
+  } @else {
+  <!-- Estado vazio -->
+  <div class="text-center py-4">
+    <p class="text-muted mb-0">Nenhum anime disponível nesta categoria</p>
+  </div>
+  }
+</div>
