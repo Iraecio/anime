@@ -1,11 +1,11 @@
 import {
-  Component,
-  ChangeDetectionStrategy,
-  computed,
-  effect,
-  input,
-  output,
-  signal,
+    Component,
+    ChangeDetectionStrategy,
+    computed,
+    effect,
+    input,
+    output,
+    signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PaginationConfig, PaginationEvent, PaginationState } from './paginacao.interface';
@@ -109,21 +109,9 @@ export class PaginacaoComponent {
         this.internalCurrentPage.set(validPage);
       }
     }, { allowSignalWrites: true });
-
-    // Emit page changes
-    effect(() => {
-      const currentState = this.paginationState();
-      const previousPage = this.internalCurrentPage();
-      
-      this.onPageChange.emit({
-        page: currentState.currentPage,
-        previousPage,
-        totalPages: currentState.totalPages,
-        totalItems: currentState.totalItems
-      });
-    });
   }
 
+  // Calcula os números das páginas para exibição
   private calculatePageNumbers(currentPage: number, totalPages: number): number[] {
     const config = this.mergedConfig();
     const maxPages = config.maxPagesToShow || 5;
@@ -178,32 +166,52 @@ export class PaginacaoComponent {
   nextPage(): void {
     const state = this.paginationState();
     if (state.hasNext) {
-      this.internalCurrentPage.set(state.currentPage + 1);
+      const newPage = state.currentPage + 1;
+      this.internalCurrentPage.set(newPage);
+      this.emitPageChange(newPage, state.currentPage);
     }
   }
 
   previousPage(): void {
     const state = this.paginationState();
     if (state.hasPrevious) {
-      this.internalCurrentPage.set(state.currentPage - 1);
+      const newPage = state.currentPage - 1;
+      this.internalCurrentPage.set(newPage);
+      this.emitPageChange(newPage, state.currentPage);
     }
   }
 
   goToFirstPage(): void {
+    const currentPage = this.internalCurrentPage();
     this.internalCurrentPage.set(1);
+    this.emitPageChange(1, currentPage);
   }
 
   goToLastPage(): void {
-    this.internalCurrentPage.set(this.totalPages());
+    const totalPages = this.totalPages();
+    const currentPage = this.internalCurrentPage();
+    this.internalCurrentPage.set(totalPages);
+    this.emitPageChange(totalPages, currentPage);
   }
 
   goToPage(page: number): void {
     const total = this.totalPages();
     const validPage = Math.max(1, Math.min(page, total));
+    const currentPage = this.internalCurrentPage();
     
-    if (validPage !== this.internalCurrentPage()) {
+    if (validPage !== currentPage) {
       this.internalCurrentPage.set(validPage);
+      this.emitPageChange(validPage, currentPage);
     }
+  }
+
+  private emitPageChange(newPage: number, previousPage: number): void {
+    this.onPageChange.emit({
+      page: newPage,
+      previousPage,
+      totalPages: this.totalPages(),
+      totalItems: this.totalItems()
+    });
   }
 
   // Keyboard navigation

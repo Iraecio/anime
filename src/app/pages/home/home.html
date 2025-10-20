@@ -64,7 +64,7 @@
       </div>
     </div>
     } @else {
-    @if (recentAnimes().length > 0) {
+    @if (recentAnimes().length > 0 && !isInSearchMode()) {
     <div class="mb-4">
       <app-anime-row title="Recém Adicionados" [animes]="recentAnimes()" [showTitle]="true"
         (onAnimeClick)="handleAnimeCardClick($event)" (onEpisodeClick)="handleEpisodeClick($event)"
