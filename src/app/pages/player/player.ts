@@ -1,4 +1,14 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import {
+  Component,
+  computed,
+  inject,
+  OnInit,
+  signal,
+  HostListener,
+  ViewChild,
+  ElementRef,
+  AfterViewInit,
+} from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer } from '@angular/platform-browser';
@@ -16,7 +26,10 @@ import { EpisodeService } from '../../services/episode.service';
   templateUrl: './player.html',
   styleUrl: './player.scss',
 })
-export class EpisodePlayer implements OnInit {
+export class EpisodePlayer implements OnInit, AfterViewInit {
+  @ViewChild('scrollContainer', { static: false })
+  scrollContainer!: ElementRef<HTMLElement>;
+
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private supabaseService = inject(SupabaseService);
@@ -29,6 +42,15 @@ export class EpisodePlayer implements OnInit {
   allEpisodes = signal<SupabaseEpisode[]>([]);
   isLoading = signal(true);
   error = signal<string | null>(null);
+
+  // Signals para navegação do carrossel
+  canScrollLeft = signal(false);
+  canScrollRight = signal(true);
+  isScrolling = signal(false);
+
+  // Touch/swipe support
+  private touchStartX = 0;
+  private touchEndX = 0;
 
   // Computed properties para navegação
   currentEpisodeIndex = computed(() => {
@@ -67,10 +89,14 @@ export class EpisodePlayer implements OnInit {
     return null;
   });
 
+  // Computed para mostrar todos os episódios
+  allVisibleEpisodes = computed(() => this.allEpisodes());
+
   // Computed para URL segura do iframe
   safeVideoUrl = computed(() => {
     const episode = this.currentEpisode();
     if (!episode?.link_video) return null;
+    //pega a url do nosso site como referer
     return this.sanitizer.bypassSecurityTrustResourceUrl(episode.link_video);
   });
 
@@ -109,6 +135,8 @@ export class EpisodePlayer implements OnInit {
       this.loadEpisodeDataBySlug(episodeId, animeSlug);
     });
   }
+
+
 
   private async loadEpisodeDataBySlug(episodeId: number, animeSlug: string) {
     try {
@@ -149,12 +177,16 @@ export class EpisodePlayer implements OnInit {
       this.currentAnime.set(animeResult);
       this.allEpisodes.set(episodesResult || []);
 
+      // Centralizar o episódio atual após carregar episódios
+      setTimeout(() => {
+        this.centerCurrentEpisode();
+      }, 1000); // Timeout maior para garantir renderização
+
       // Marcar episódio como assistido
       this.episodeService.markAsWatched(episodeId);
 
-      console.log('assistido')
+      console.log('assistido');
       this.isLoading.set(false);
- 
     } catch (error) {
       console.error('Erro ao carregar dados do episódio:', error);
       // Tenta busca alternativa como último recurso
@@ -215,6 +247,11 @@ export class EpisodePlayer implements OnInit {
       this.currentEpisode.set(episodeResult);
       this.currentAnime.set(animeResult);
       this.allEpisodes.set(episodesResult || []);
+
+      // Centralizar o episódio atual após carregar episódios
+      setTimeout(() => {
+        this.centerCurrentEpisode();
+      }, 1000); // Timeout maior para garantir renderização
 
       // Marcar episódio como assistido
       this.episodeService.markAsWatched(episodeId);
@@ -333,5 +370,260 @@ export class EpisodePlayer implements OnInit {
         iframe.requestFullscreen();
       }
     }
+  }
+
+  goToRandomEpisode() {
+    const episodes = this.allEpisodes();
+    const currentEpisode = this.currentEpisode();
+    
+    if (episodes.length <= 1) {
+      return; // Não há outros episódios para escolher
+    }
+
+    // Filtrar episódios diferentes do atual
+    const availableEpisodes = episodes.filter(ep => ep.id !== currentEpisode?.id);
+    
+    // Selecionar aleatório
+    const randomIndex = Math.floor(Math.random() * availableEpisodes.length);
+    const randomEpisode = availableEpisodes[randomIndex];
+    
+    if (randomEpisode) {
+      this.goToEpisode(randomEpisode);
+    }
+  }
+
+  ngAfterViewInit() {
+    // Centralizar episódio atual após a view ser inicializada (se já tiver dados)
+    setTimeout(() => {
+      if (this.currentEpisode() && this.allEpisodes().length > 0) {
+        this.centerCurrentEpisode();
+      } else {
+        this.updateScrollButtons();
+      }
+    }, 1000); // Timeout maior para dar tempo de renderizar
+  }
+
+  scrollLeft() {
+    if (!this.scrollContainer || this.isScrolling()) return;
+
+    this.isScrolling.set(true);
+    const container = this.scrollContainer.nativeElement;
+
+    // Scroll baseado na largura do container visível
+    const containerWidth = container.clientWidth;
+    const scrollAmount = containerWidth * 0.8; // Scroll 80% da largura visível
+
+    container.scrollBy({
+      left: -scrollAmount,
+      behavior: 'smooth',
+    });
+
+    setTimeout(() => {
+      this.updateScrollButtons();
+      this.isScrolling.set(false);
+    }, 300);
+  }
+
+  scrollRight() {
+    if (!this.scrollContainer || this.isScrolling()) return;
+
+    this.isScrolling.set(true);
+    const container = this.scrollContainer.nativeElement;
+
+    // Scroll baseado na largura do container visível
+    const containerWidth = container.clientWidth;
+    const scrollAmount = containerWidth * 0.8; // Scroll 80% da largura visível
+
+    container.scrollBy({
+      left: scrollAmount,
+      behavior: 'smooth',
+    });
+
+    setTimeout(() => {
+      this.updateScrollButtons();
+      this.isScrolling.set(false);
+    }, 300);
+  }
+
+  onScroll() {
+    if (!this.isScrolling()) {
+      this.updateScrollButtons();
+    }
+  }
+
+  private updateScrollButtons() {
+    if (!this.scrollContainer) return;
+
+    const container = this.scrollContainer.nativeElement;
+    const scrollLeft = container.scrollLeft;
+    const scrollWidth = container.scrollWidth;
+    const clientWidth = container.clientWidth;
+    const maxScrollLeft = scrollWidth - clientWidth;
+
+    // Só mostra botão esquerdo se scrollou para a direita (há conteúdo escondido à esquerda)
+    this.canScrollLeft.set(scrollLeft > 5); // 5px de margem para evitar flickering
+
+    // Só mostra botão direito se há conteúdo escondido à direita
+    this.canScrollRight.set(scrollLeft < maxScrollLeft - 5); // 5px de margem
+  }
+
+  private centerCurrentEpisode() {
+    if (!this.scrollContainer) {
+      console.log('ScrollContainer não disponível');
+      return;
+    }
+
+    const container = this.scrollContainer.nativeElement;
+    const episodes = this.allEpisodes();
+    const currentIndex = this.currentEpisodeIndex();
+
+    console.log('centerCurrentEpisode chamado:', { 
+      episodesLength: episodes.length, 
+      currentIndex,
+      hasContainer: !!this.scrollContainer 
+    });
+
+    if (currentIndex < 0 || episodes.length === 0) {
+      console.log('Índice inválido ou sem episódios');
+      return;
+    }
+
+    // Função para tentar centralizar com retry
+    const tryCenter = (attempts = 0) => {
+      if (attempts > 10) {
+        console.log('Máximo de tentativas atingido');
+        return;
+      }
+
+      const episodeCards = container.querySelectorAll('.episode-card');
+      
+      console.log(`Tentativa ${attempts + 1} - Elementos encontrados:`, {
+        cardsFound: episodeCards.length,
+        expectedCards: episodes.length,
+        containerScrollWidth: container.scrollWidth,
+        containerClientWidth: container.clientWidth
+      });
+
+      // Verifica se todos os cards foram renderizados
+      if (episodeCards.length < episodes.length) {
+        console.log('Ainda renderizando cards, tentando novamente...');
+        setTimeout(() => tryCenter(attempts + 1), 200);
+        return;
+      }
+
+      const currentCard = episodeCards[currentIndex] as HTMLElement;
+      if (!currentCard) {
+        console.log(`Card atual não encontrado no índice: ${currentIndex}`);
+        setTimeout(() => tryCenter(attempts + 1), 200);
+        return;
+      }
+
+      const containerWidth = container.clientWidth;
+      const cardLeft = currentCard.offsetLeft;
+      const cardWidth = currentCard.offsetWidth;
+
+      // Calcula a posição para centralizar o card atual
+      const scrollPosition = cardLeft - (containerWidth / 2) + (cardWidth / 2);
+
+      // Garante que não role além dos limites
+      const maxScroll = container.scrollWidth - containerWidth;
+      const finalPosition = Math.max(0, Math.min(scrollPosition, maxScroll));
+
+      console.log('Centralizando episódio:', {
+        currentIndex,
+        cardLeft,
+        cardWidth,
+        containerWidth,
+        scrollPosition,
+        finalPosition,
+        episodeNumber: episodes[currentIndex]?.numero
+      });
+
+      container.scrollTo({
+        left: finalPosition,
+        behavior: 'smooth'
+      });
+
+      // Atualiza os botões após o scroll
+      setTimeout(() => this.updateScrollButtons(), 300);
+    };
+
+    // Inicia as tentativas
+    setTimeout(() => tryCenter(), 100);
+  }
+
+  goToEpisode(episode: SupabaseEpisode) {
+    const anime = this.currentAnime();
+    if (anime) {
+      const animeSlug = this.createSlug(anime.titulo);
+      this.router.navigate(['/player', animeSlug, episode.id]);
+    }
+  }
+
+  // Métodos removidos - não mais necessários com flex layout
+
+  // Navegação por teclado
+  @HostListener('window:keydown', ['$event'])
+  onKeyDown(event: KeyboardEvent) {
+    // Apenas processar se não estivermos em um campo de input
+    if ((event.target as HTMLElement)?.tagName === 'INPUT') {
+      return;
+    }
+
+    switch (event.key) {
+      case 'ArrowLeft':
+        event.preventDefault();
+        this.goToPreviousEpisode();
+        break;
+      case 'ArrowRight':
+        event.preventDefault();
+        this.goToNextEpisode();
+        break;
+      case 'Home':
+        event.preventDefault();
+        const firstEpisode = this.allEpisodes()[0];
+        if (firstEpisode) {
+          this.goToEpisode(firstEpisode);
+        }
+        break;
+      case 'End':
+        event.preventDefault();
+        const episodes = this.allEpisodes();
+        const lastEpisode = episodes[episodes.length - 1];
+        if (lastEpisode) {
+          this.goToEpisode(lastEpisode);
+        }
+        break;
+    }
+  }
+
+  // Métodos para touch/swipe
+  onTouchStart(event: TouchEvent) {
+    this.touchStartX = event.touches[0].clientX;
+  }
+
+  onTouchEnd(event: TouchEvent) {
+    this.touchEndX = event.changedTouches[0].clientX;
+    this.handleSwipe();
+  }
+
+  private handleSwipe() {
+    const swipeThreshold = 50; // Minimum distance for a swipe
+    const swipeDistance = this.touchStartX - this.touchEndX;
+
+    if (Math.abs(swipeDistance) > swipeThreshold) {
+      if (swipeDistance > 0) {
+        // Swipe left - scroll right
+        this.scrollRight();
+      } else {
+        // Swipe right - scroll left
+        this.scrollLeft();
+      }
+    }
+  }
+
+  @HostListener('window:resize')
+  onWindowResize() { 
+    setTimeout(() => this.updateScrollButtons(), 100);
   }
 }

@@ -44,6 +44,15 @@
       <div class="player-controls">
         <button 
           class="btn btn-secondary" 
+          (click)="goToRandomEpisode()"
+          [disabled]="allEpisodes().length <= 1"
+          title="Episódio aleatório">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M14.83 13.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04L14.83 13.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4H14.5zM10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41z"/>
+          </svg>
+        </button>
+        <button 
+          class="btn btn-secondary" 
           (click)="toggleFullscreen()"
           title="Tela cheia">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -59,8 +68,8 @@
         <iframe 
           [src]="safeVideoUrl()"
           frameborder="0"
-          allowfullscreen
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowfullscreen 
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share;"
           class="video-player">
         </iframe>
       } @else {
@@ -72,49 +81,66 @@
       }
     </main>
 
-    <!-- Navegação entre episódios -->
-    <nav class="episode-navigation">
+    <!-- Navegação de Episódios como no anime-row -->
+    <nav class="episode-navigation position-relative">
+      <!-- Botão de scroll para esquerda -->
+      @if (canScrollLeft()) {
       <button 
-        class="nav-btn prev-btn"
-        [disabled]="!hasPreviousEpisode()"
-        (click)="goToPreviousEpisode()"
-        [title]="hasPreviousEpisode() ? 'Episódio anterior: ' + previousEpisode()?.numero : 'Não há episódio anterior'">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+        class="btn btn-dark rounded-circle position-absolute d-flex align-items-center justify-content-center"
+        style="left: 10px; top: calc(50% + 10px); transform: translateY(-50%); z-index: 10; width: 40px; height: 40px; backdrop-filter: blur(4px);"
+        [disabled]="isScrolling()"
+        (click)="scrollLeft()"
+        type="button"
+        aria-label="Scroll para esquerda">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
           <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
         </svg>
-        <div class="nav-info">
-          @if (hasPreviousEpisode()) {
-            <span class="nav-label">Anterior</span>
-            <span class="nav-episode">Episódio {{ previousEpisode()?.numero }}</span>
-          } @else {
-            <span class="nav-label">Primeiro episódio</span>
+      </button>
+      }
+
+      <!-- Container de scroll horizontal -->
+      <div class="scrollbar-hidden" 
+           #scrollContainer
+           (scroll)="onScroll()"
+           (touchstart)="onTouchStart($event)"
+           (touchend)="onTouchEnd($event)"
+           style="overflow-x: auto; overflow-y: visible; scroll-behavior: smooth; padding: 20px 0;">
+        
+        <!-- Row com os episode cards usando flexbox -->
+        <div class="d-flex flex-nowrap gap-3" style="min-width: max-content;">
+          @for (episode of allVisibleEpisodes(); track episode.id) {
+          <div class="flex-shrink-0">
+            <div 
+              class="episode-card"
+              [class.current]="episode.id === currentEpisode()?.id"
+              (click)="goToEpisode(episode)"
+              [title]="'Ir para o episódio ' + episode.numero"
+              [attr.aria-label]="'Episódio ' + episode.numero + (episode.id === currentEpisode()?.id ? ' (atual)' : '')">
+              <span class="current-label">Episódio</span>
+              <span class="current-number">{{ episode.numero }}</span>
+              @if (episode.id === currentEpisode()?.id) {
+                <span class="total-episodes">Atual</span>
+              }
+            </div>
+          </div>
           }
         </div>
-      </button>
-
-      <div class="current-episode-info">
-        <span class="current-label">Episódio Atual</span>
-        <span class="current-number">{{ currentEpisode()?.numero }}</span>
-        <span class="total-episodes">de {{ allEpisodes().length }}</span>
       </div>
 
+      <!-- Botão de scroll para direita -->
+      @if (canScrollRight()) {
       <button 
-        class="nav-btn next-btn"
-        [disabled]="!hasNextEpisode()"
-        (click)="goToNextEpisode()"
-        [title]="hasNextEpisode() ? 'Próximo episódio: ' + nextEpisode()?.numero : 'Não há próximo episódio'">
-        <div class="nav-info">
-          @if (hasNextEpisode()) {
-            <span class="nav-label">Próximo</span>
-            <span class="nav-episode">Episódio {{ nextEpisode()?.numero }}</span>
-          } @else {
-            <span class="nav-label">Último episódio</span>
-          }
-        </div>
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+        class="btn btn-dark rounded-circle position-absolute d-flex align-items-center justify-content-center"
+        style="right: 10px; top: 50%; transform: translateY(-50%); z-index: 10; width: 40px; height: 40px; backdrop-filter: blur(4px);"
+        [disabled]="isScrolling()"
+        (click)="scrollRight()"
+        type="button"
+        aria-label="Scroll para direita">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
           <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
         </svg>
       </button>
+      }
     </nav>
 
     <!-- Informações adicionais -->
