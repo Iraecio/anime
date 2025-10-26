@@ -18,6 +18,8 @@ import {
   SupabaseAnime,
 } from '../../services/supabase.service';
 import { EpisodeService } from '../../services/episode.service';
+import { HttpClient } from '@angular/common/http';
+import { lastValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-episode-player',
@@ -27,6 +29,8 @@ import { EpisodeService } from '../../services/episode.service';
   styleUrl: './player.scss',
 })
 export class EpisodePlayer implements OnInit, AfterViewInit {
+  private httpClient = inject(HttpClient);
+
   @ViewChild('scrollContainer', { static: false })
   scrollContainer!: ElementRef<HTMLElement>;
 
@@ -35,6 +39,9 @@ export class EpisodePlayer implements OnInit, AfterViewInit {
   private supabaseService = inject(SupabaseService);
   private episodeService = inject(EpisodeService);
   private sanitizer = inject(DomSanitizer);
+
+  private episodeBase64 = signal<string | null>(null);
+  videoUrlBase64 = signal<string | null>(null);
 
   // Estado do componente
   currentEpisode = signal<SupabaseEpisode | null>(null);
@@ -100,6 +107,28 @@ export class EpisodePlayer implements OnInit, AfterViewInit {
     return this.sanitizer.bypassSecurityTrustResourceUrl(episode.link_video);
   });
 
+  private convertEpisodeIdToBase64(episodeId: number): string | null {
+    try {
+      const encoded = btoa(episodeId.toString());
+      return encoded;
+    } catch (error) {
+      console.error('Erro ao codificar ID do episódio:', error);
+      return null;
+    }
+  }
+
+  private convertEpisodeIdBase64ToEpisodeId(
+    episodeIdBase64: string
+  ): number | null {
+    try {
+      const decoded = atob(episodeIdBase64);
+      return parseInt(decoded, 10);
+    } catch (error) {
+      console.error('Erro ao decodificar ID do episódio:', error);
+      return null;
+    }
+  }
+
   ngOnInit() {
     this.route.params.subscribe((params) => {
       const episodeIdParam = params['episodeId'];
@@ -114,6 +143,12 @@ export class EpisodePlayer implements OnInit, AfterViewInit {
         return;
       }
 
+      //converte o hashBase64
+      const hashBase64 = this.convertEpisodeIdToBase64(episodeIdParam);
+      this.episodeBase64.set(hashBase64);
+      this.findEpisodeByHashBase64(hashBase64!).then((linkVideo) => {
+        this.videoUrlBase64.set(linkVideo);
+      });
       const episodeId = +episodeIdParam;
 
       if (isNaN(episodeId) || episodeId <= 0) {
@@ -135,8 +170,6 @@ export class EpisodePlayer implements OnInit, AfterViewInit {
       this.loadEpisodeDataBySlug(episodeId, animeSlug);
     });
   }
-
-
 
   private async loadEpisodeDataBySlug(episodeId: number, animeSlug: string) {
     try {
@@ -262,6 +295,21 @@ export class EpisodePlayer implements OnInit, AfterViewInit {
     }
   }
 
+  private async findEpisodeByHashBase64(
+    hashBase64: string
+  ): Promise<string | null> {
+    try {
+      const request = this.httpClient.get<{ linkVideo: string }>(
+        `http://localhost:3000/${hashBase64}`
+      );
+      const result = await lastValueFrom(request);
+      return result.linkVideo || null;
+    } catch (error) {
+      console.error('Erro ao buscar episódio por hashBase64:', error);
+      return null;
+    }
+  }
+
   private async findAnimeBySlug(slug: string): Promise<SupabaseAnime | null> {
     try {
       // Normaliza o slug de entrada
@@ -375,18 +423,20 @@ export class EpisodePlayer implements OnInit, AfterViewInit {
   goToRandomEpisode() {
     const episodes = this.allEpisodes();
     const currentEpisode = this.currentEpisode();
-    
+
     if (episodes.length <= 1) {
       return; // Não há outros episódios para escolher
     }
 
     // Filtrar episódios diferentes do atual
-    const availableEpisodes = episodes.filter(ep => ep.id !== currentEpisode?.id);
-    
+    const availableEpisodes = episodes.filter(
+      (ep) => ep.id !== currentEpisode?.id
+    );
+
     // Selecionar aleatório
     const randomIndex = Math.floor(Math.random() * availableEpisodes.length);
     const randomEpisode = availableEpisodes[randomIndex];
-    
+
     if (randomEpisode) {
       this.goToEpisode(randomEpisode);
     }
@@ -477,10 +527,10 @@ export class EpisodePlayer implements OnInit, AfterViewInit {
     const episodes = this.allEpisodes();
     const currentIndex = this.currentEpisodeIndex();
 
-    console.log('centerCurrentEpisode chamado:', { 
-      episodesLength: episodes.length, 
+    console.log('centerCurrentEpisode chamado:', {
+      episodesLength: episodes.length,
       currentIndex,
-      hasContainer: !!this.scrollContainer 
+      hasContainer: !!this.scrollContainer,
     });
 
     if (currentIndex < 0 || episodes.length === 0) {
@@ -496,12 +546,12 @@ export class EpisodePlayer implements OnInit, AfterViewInit {
       }
 
       const episodeCards = container.querySelectorAll('.episode-card');
-      
+
       console.log(`Tentativa ${attempts + 1} - Elementos encontrados:`, {
         cardsFound: episodeCards.length,
         expectedCards: episodes.length,
         containerScrollWidth: container.scrollWidth,
-        containerClientWidth: container.clientWidth
+        containerClientWidth: container.clientWidth,
       });
 
       // Verifica se todos os cards foram renderizados
@@ -531,14 +581,15 @@ export class EpisodePlayer implements OnInit, AfterViewInit {
 
       if (isMobile) {
         // Em mobile, centraliza mais precisamente para mostrar apenas o atual + vizinhos próximos
-        scrollPosition = cardLeft - (containerWidth / 2) + (cardWidth / 2);
+        scrollPosition = cardLeft - containerWidth / 2 + cardWidth / 2;
       } else if (isTablet) {
         // Em tablet, permite ver mais contexto (2-3 cards de cada lado)
         const offsetRatio = 0.4; // Centralização ligeiramente deslocada
-        scrollPosition = cardLeft - (containerWidth * offsetRatio) + (cardWidth / 2);
+        scrollPosition =
+          cardLeft - containerWidth * offsetRatio + cardWidth / 2;
       } else {
         // Desktop mantém centralização padrão
-        scrollPosition = cardLeft - (containerWidth / 2) + (cardWidth / 2);
+        scrollPosition = cardLeft - containerWidth / 2 + cardWidth / 2;
       }
 
       // Garante que não role além dos limites
@@ -554,12 +605,12 @@ export class EpisodePlayer implements OnInit, AfterViewInit {
         breakpoint: isMobile ? 'mobile' : isTablet ? 'tablet' : 'desktop',
         scrollPosition,
         finalPosition,
-        episodeNumber: episodes[currentIndex]?.numero
+        episodeNumber: episodes[currentIndex]?.numero,
       });
 
       container.scrollTo({
         left: finalPosition,
-        behavior: 'smooth'
+        behavior: 'smooth',
       });
 
       // Atualiza os botões após o scroll
@@ -641,7 +692,7 @@ export class EpisodePlayer implements OnInit, AfterViewInit {
   }
 
   @HostListener('window:resize')
-  onWindowResize() { 
+  onWindowResize() {
     // Re-centralizar episódio atual ao redimensionar
     setTimeout(() => {
       if (this.currentEpisode() && this.allEpisodes().length > 0) {
@@ -650,5 +701,13 @@ export class EpisodePlayer implements OnInit, AfterViewInit {
         this.updateScrollButtons();
       }
     }, 200); // Timeout maior para aguardar layout se ajustar
+  }
+
+  // Picture-in-Picture
+  async togglePip() {
+    const video = document.querySelector('video');
+    if (!video) return;
+    video?.requestPictureInPicture();
+    console.log('togglePip chamado');
   }
 }

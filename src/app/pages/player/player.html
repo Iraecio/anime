@@ -1,161 +1,153 @@
 <div class="episode-player-container">
   @if (isLoading()) {
-    <div class="loading-state">
-      <div class="loading-spinner"></div>
-      <p>Carregando episódio...</p>
-    </div>
+  <div class="loading-state">
+    <div class="loading-spinner"></div>
+    <p>Carregando episódio...</p>
+  </div>
   } @else if (error()) {
-    <div class="error-state">
-      <div class="error-icon">⚠️</div>
-      <h2>Erro ao carregar episódio</h2>
-      <p>{{ error() }}</p>
-      <div class="error-actions">
-        <button class="btn btn-primary" (click)="goHome()">Voltar ao Início</button>
-        <button class="btn btn-secondary" (click)="navigateToAnime()">Voltar ao Anime</button>
+  <div class="error-state">
+    <div class="error-icon">⚠️</div>
+    <h2>Erro ao carregar episódio</h2>
+    <p>{{ error() }}</p>
+    <div class="error-actions">
+      <button class="btn btn-primary" (click)="goHome()">Voltar ao Início</button>
+      <button class="btn btn-secondary" (click)="navigateToAnime()">Voltar ao Anime</button>
+    </div>
+  </div>
+  } @else {
+  <!-- Header com informações do episódio -->
+  <header class="player-header">
+    <div class="breadcrumb">
+      <button class="breadcrumb-btn" (click)="goHome()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+        </svg>
+        Início
+      </button>
+      <span class="separator">›</span>
+      <button class="breadcrumb-btn" (click)="navigateToAnime()">
+        {{ currentAnime()?.titulo }}
+      </button>
+      <span class="separator">›</span>
+      <span class="current">Episódio {{ currentEpisode()?.numero }}</span>
+    </div>
+
+    <div class="episode-info">
+      <h1 class="episode-title">
+        {{ currentAnime()?.titulo }} - Episódio {{ currentEpisode()?.numero }}
+      </h1>
+      @if (currentAnime()?.status) {
+      <span class="anime-status">{{ currentAnime()?.status }}</span>
+      }
+    </div>
+
+    <div class="player-controls">
+      <button class="btn btn-secondary" (click)="goToRandomEpisode()" [disabled]="allEpisodes().length <= 1"
+        title="Episódio aleatório">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path
+            d="M14.83 13.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04L14.83 13.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4H14.5zM10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41z" />
+        </svg>
+      </button>
+      <button class="btn btn-secondary" (click)="toggleFullscreen()" title="Tela cheia">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
+        </svg>
+      </button>
+      <button class="btn btn-secondary" (click)="togglePip()" title="Picture-in-Picture">
+        <svg width="20" height="20" viewBox="0 0 24 24" role="img" aria-label="Picture-in-Picture" fill="none"
+          stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <title>Picture-in-Picture</title>
+          <rect x="3" y="4" width="18" height="14" rx="2" ry="2" />
+          <rect x="14" y="12" width="6" height="4" rx="1" ry="1" fill="currentColor" stroke="none" />
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Player de vídeo em modo cinema -->
+  <main class="video-container">
+    @if(videoUrlBase64() != null) {
+    <video controls="" autoplay="" name="media" class="video-player">
+      <source [src]="videoUrlBase64()" type="video/mp4">
+    </video>
+    }
+    @if (safeVideoUrl() && !videoUrlBase64()) {
+    <iframe [src]="safeVideoUrl()" frameborder="0" allowfullscreen
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share;"
+      class="video-player">
+    </iframe>
+    }
+    @if (!safeVideoUrl() && !videoUrlBase64()) {
+    <div class="no-video">
+      <div class="no-video-icon">📹</div>
+      <h3>Vídeo não disponível</h3>
+      <p>O link do vídeo não foi encontrado para este episódio.</p>
+    </div>
+    }
+  </main>
+
+  <!-- Navegação de Episódios como no anime-row -->
+  <nav class="episode-navigation position-relative">
+    <!-- Botão de scroll para esquerda -->
+    @if (canScrollLeft()) {
+    <button class="btn btn-dark rounded-circle position-absolute d-flex align-items-center justify-content-center"
+      style="left: 10px; top: calc(50% + 10px); transform: translateY(-50%); z-index: 10; width: 40px; height: 40px; backdrop-filter: blur(4px);"
+      [disabled]="isScrolling()" (click)="scrollLeft()" type="button" aria-label="Scroll para esquerda">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
+      </svg>
+    </button>
+    }
+
+    <!-- Container de scroll horizontal -->
+    <div class="scrollbar-hidden" #scrollContainer (scroll)="onScroll()" (touchstart)="onTouchStart($event)"
+      (touchend)="onTouchEnd($event)"
+      style="overflow-x: auto; overflow-y: visible; scroll-behavior: smooth; padding: 20px 0;">
+
+      <!-- Row com os episode cards usando flexbox -->
+      <div class="d-flex flex-nowrap gap-3" style="min-width: max-content;">
+        @for (episode of allVisibleEpisodes(); track episode.id) {
+        <div class="flex-shrink-0">
+          <div class="episode-card" [class.current]="episode.id === currentEpisode()?.id" (click)="goToEpisode(episode)"
+            [title]="'Ir para o episódio ' + episode.numero"
+            [attr.aria-label]="'Episódio ' + episode.numero + (episode.id === currentEpisode()?.id ? ' (atual)' : '')">
+            <span class="current-label">Episódio</span>
+            <span class="current-number">{{ episode.numero }}</span>
+            @if (episode.id === currentEpisode()?.id) {
+            <span class="total-episodes">Atual</span>
+            }
+          </div>
+        </div>
+        }
       </div>
     </div>
-  } @else {
-    <!-- Header com informações do episódio -->
-    <header class="player-header">
-      <div class="breadcrumb">
-        <button class="breadcrumb-btn" (click)="goHome()">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
-          </svg>
-          Início
-        </button>
-        <span class="separator">›</span>
-        <button class="breadcrumb-btn" (click)="navigateToAnime()">
-          {{ currentAnime()?.titulo }}
-        </button>
-        <span class="separator">›</span>
-        <span class="current">Episódio {{ currentEpisode()?.numero }}</span>
-      </div>
 
-      <div class="episode-info">
-        <h1 class="episode-title">
-          {{ currentAnime()?.titulo }} - Episódio {{ currentEpisode()?.numero }}
-        </h1>
-        @if (currentAnime()?.status) {
-          <span class="anime-status">{{ currentAnime()?.status }}</span>
-        }
-      </div>
+    <!-- Botão de scroll para direita -->
+    @if (canScrollRight()) {
+    <button class="btn btn-dark rounded-circle position-absolute d-flex align-items-center justify-content-center"
+      style="right: 10px; top: 50%; transform: translateY(-50%); z-index: 10; width: 40px; height: 40px; backdrop-filter: blur(4px);"
+      [disabled]="isScrolling()" (click)="scrollRight()" type="button" aria-label="Scroll para direita">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
+      </svg>
+    </button>
+    }
+  </nav>
 
-      <div class="player-controls">
-        <button 
-          class="btn btn-secondary" 
-          (click)="goToRandomEpisode()"
-          [disabled]="allEpisodes().length <= 1"
-          title="Episódio aleatório">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M14.83 13.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04L14.83 13.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4H14.5zM10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41z"/>
-          </svg>
-        </button>
-        <button 
-          class="btn btn-secondary" 
-          (click)="toggleFullscreen()"
-          title="Tela cheia">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
-          </svg>
-        </button>
-      </div>
-    </header>
-
-    <!-- Player de vídeo em modo cinema -->
-    <main class="video-container">
-      @if (safeVideoUrl()) {
-        <iframe 
-          [src]="safeVideoUrl()"
-          frameborder="0"
-          allowfullscreen 
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share;"
-          class="video-player">
-        </iframe>
-      } @else {
-        <div class="no-video">
-          <div class="no-video-icon">📹</div>
-          <h3>Vídeo não disponível</h3>
-          <p>O link do vídeo não foi encontrado para este episódio.</p>
-        </div>
+  <!-- Informações adicionais -->
+  <footer class="player-footer">
+    <div class="episode-meta">
+      @if (currentAnime()?.criado_em) {
+      <span class="meta-item">
+        Adicionado em {{ currentAnime()?.criado_em | date:'dd/MM/yyyy' }}
+      </span>
       }
-    </main>
-
-    <!-- Navegação de Episódios como no anime-row -->
-    <nav class="episode-navigation position-relative">
-      <!-- Botão de scroll para esquerda -->
-      @if (canScrollLeft()) {
-      <button 
-        class="btn btn-dark rounded-circle position-absolute d-flex align-items-center justify-content-center"
-        style="left: 10px; top: calc(50% + 10px); transform: translateY(-50%); z-index: 10; width: 40px; height: 40px; backdrop-filter: blur(4px);"
-        [disabled]="isScrolling()"
-        (click)="scrollLeft()"
-        type="button"
-        aria-label="Scroll para esquerda">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
-        </svg>
-      </button>
+      @if (currentAnime()?.dublado !== null) {
+      <span class="meta-item">
+        {{ currentAnime()?.dublado ? 'Dublado' : 'Legendado' }}
+      </span>
       }
-
-      <!-- Container de scroll horizontal -->
-      <div class="scrollbar-hidden" 
-           #scrollContainer
-           (scroll)="onScroll()"
-           (touchstart)="onTouchStart($event)"
-           (touchend)="onTouchEnd($event)"
-           style="overflow-x: auto; overflow-y: visible; scroll-behavior: smooth; padding: 20px 0;">
-        
-        <!-- Row com os episode cards usando flexbox -->
-        <div class="d-flex flex-nowrap gap-3" style="min-width: max-content;">
-          @for (episode of allVisibleEpisodes(); track episode.id) {
-          <div class="flex-shrink-0">
-            <div 
-              class="episode-card"
-              [class.current]="episode.id === currentEpisode()?.id"
-              (click)="goToEpisode(episode)"
-              [title]="'Ir para o episódio ' + episode.numero"
-              [attr.aria-label]="'Episódio ' + episode.numero + (episode.id === currentEpisode()?.id ? ' (atual)' : '')">
-              <span class="current-label">Episódio</span>
-              <span class="current-number">{{ episode.numero }}</span>
-              @if (episode.id === currentEpisode()?.id) {
-                <span class="total-episodes">Atual</span>
-              }
-            </div>
-          </div>
-          }
-        </div>
-      </div>
-
-      <!-- Botão de scroll para direita -->
-      @if (canScrollRight()) {
-      <button 
-        class="btn btn-dark rounded-circle position-absolute d-flex align-items-center justify-content-center"
-        style="right: 10px; top: 50%; transform: translateY(-50%); z-index: 10; width: 40px; height: 40px; backdrop-filter: blur(4px);"
-        [disabled]="isScrolling()"
-        (click)="scrollRight()"
-        type="button"
-        aria-label="Scroll para direita">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
-        </svg>
-      </button>
-      }
-    </nav>
-
-    <!-- Informações adicionais -->
-    <footer class="player-footer">
-      <div class="episode-meta">
-        @if (currentAnime()?.criado_em) {
-          <span class="meta-item">
-            Adicionado em {{ currentAnime()?.criado_em | date:'dd/MM/yyyy' }}
-          </span>
-        }
-        @if (currentAnime()?.dublado !== null) {
-          <span class="meta-item">
-            {{ currentAnime()?.dublado ? 'Dublado' : 'Legendado' }}
-          </span>
-        }
-      </div>
-    </footer>
+    </div>
+  </footer>
   }
