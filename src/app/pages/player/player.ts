@@ -522,18 +522,36 @@ export class EpisodePlayer implements OnInit, AfterViewInit {
       const cardLeft = currentCard.offsetLeft;
       const cardWidth = currentCard.offsetWidth;
 
-      // Calcula a posição para centralizar o card atual
-      const scrollPosition = cardLeft - (containerWidth / 2) + (cardWidth / 2);
+      // Detecção de breakpoint para ajustar centralização
+      const isMobile = window.innerWidth <= 575;
+      const isTablet = window.innerWidth > 575 && window.innerWidth <= 991;
+      const isDesktop = window.innerWidth > 991;
+
+      let scrollPosition: number;
+
+      if (isMobile) {
+        // Em mobile, centraliza mais precisamente para mostrar apenas o atual + vizinhos próximos
+        scrollPosition = cardLeft - (containerWidth / 2) + (cardWidth / 2);
+      } else if (isTablet) {
+        // Em tablet, permite ver mais contexto (2-3 cards de cada lado)
+        const offsetRatio = 0.4; // Centralização ligeiramente deslocada
+        scrollPosition = cardLeft - (containerWidth * offsetRatio) + (cardWidth / 2);
+      } else {
+        // Desktop mantém centralização padrão
+        scrollPosition = cardLeft - (containerWidth / 2) + (cardWidth / 2);
+      }
 
       // Garante que não role além dos limites
       const maxScroll = container.scrollWidth - containerWidth;
       const finalPosition = Math.max(0, Math.min(scrollPosition, maxScroll));
 
-      console.log('Centralizando episódio:', {
+      console.log('Centralizando episódio (responsivo):', {
         currentIndex,
         cardLeft,
         cardWidth,
         containerWidth,
+        screenWidth: window.innerWidth,
+        breakpoint: isMobile ? 'mobile' : isTablet ? 'tablet' : 'desktop',
         scrollPosition,
         finalPosition,
         episodeNumber: episodes[currentIndex]?.numero
@@ -624,6 +642,13 @@ export class EpisodePlayer implements OnInit, AfterViewInit {
 
   @HostListener('window:resize')
   onWindowResize() { 
-    setTimeout(() => this.updateScrollButtons(), 100);
+    // Re-centralizar episódio atual ao redimensionar
+    setTimeout(() => {
+      if (this.currentEpisode() && this.allEpisodes().length > 0) {
+        this.centerCurrentEpisode();
+      } else {
+        this.updateScrollButtons();
+      }
+    }, 200); // Timeout maior para aguardar layout se ajustar
   }
 }
