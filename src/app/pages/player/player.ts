@@ -300,7 +300,7 @@ export class EpisodePlayer implements OnInit, AfterViewInit {
   ): Promise<string | null> {
     try {
       const request = this.httpClient.get<{ linkVideo: string }>(
-        `http://localhost:3000/${hashBase64}`
+        `http://54.221.71.79/e/${hashBase64}`
       );
       const result = await lastValueFrom(request);
       return result.linkVideo || null;

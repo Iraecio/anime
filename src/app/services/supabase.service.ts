@@ -33,6 +33,74 @@ export class SupabaseService {
     this.cacheService.startAutoCleanup();
   }
 
+  // ===== MÉTODOS PARA GÊNEROS =====
+  // animes_by_genre
+  getAnimesByGenre(
+    genre: string,
+    page: number = 1,
+    limit: number = 50
+  ): Observable<{ data: SupabaseAnimeWithEpisodes[]; total: number }> {
+    const from_index = (page - 1) * limit;
+    const to_index = from_index + limit - 1;
+
+    this.isLoading.set(true);
+    this.error.set(null);
+
+    return from(
+      this.supabase
+        .from('animes_by_genre')
+        .select('*', { count: 'exact' })
+        .ilike('generos_string', `%${genre}%`)
+        .range(from_index, to_index)
+        .order('ultimo_episodio_criado_em', {
+          ascending: false,
+          nullsFirst: false,
+        })
+    ).pipe(
+      map(({ data, error, count }) => {
+        this.isLoading.set(false);
+
+        if (error) {
+          this.error.set(error.message);
+          throw new Error(error.message);
+        }
+
+        // Mapear dados para incluir array de episódios vazio (para compatibilidade de tipo)
+        const animesWithEpisodes: SupabaseAnimeWithEpisodes[] = (data || []).map(
+          (anime) => ({
+            // Preencher explicitamente os campos obrigatórios do tipo SupabaseAnimeWithEpisodes
+            id: anime.id ?? 0,
+            titulo: anime.titulo ?? '',
+            thumb: anime.thumb ?? null,
+            slug: anime.slug ?? null,
+            dublado: anime.dublado ?? null,
+            link_original: anime.link_original ?? '',
+            status: (anime as any).status ?? null,
+            criado_em: (anime as any).criado_em ?? null,
+            atualizado_em: (anime as any).atualizado_em ?? null,
+            ano: anime.ano ?? null,
+            // Episódios vazios pois a view não retorna episódios aqui
+            episodios: [],
+            // Normaliza generos para string[]
+            generos: Array.isArray(anime.generos)
+              ? anime.generos.filter((g): g is string => typeof g === 'string')
+              : typeof anime.generos === 'string'
+              ? [anime.generos]
+              : [],
+          })
+        );
+
+        return { data: animesWithEpisodes, total: count || 0 };
+      }),
+      catchError((error) => {
+        this.isLoading.set(false);
+        this.error.set(error.message);
+        console.error('Erro ao buscar animes por gênero:', error);
+        return of({ data: [], total: 0 });
+      })
+    );
+  }
+
   // ===== MÉTODOS PARA ANIMES =====
   getAnimes(
     page: number = 1,
@@ -45,7 +113,7 @@ export class SupabaseService {
     return this.cacheService.getOrSet(
       cacheKey,
       () => this.fetchAnimes(page, limit),
-      3 * 60 * 1000 // 3 minutos
+      1 * 60 * 1000 // 1 minuto
     );
   }
 

@@ -10,7 +10,7 @@ export interface CardState {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class CardService {
   // Estados centralizados
@@ -25,7 +25,9 @@ export class CardService {
   readonly currentExpandedAnime = computed(() => this.expandedAnime());
   readonly currentExpandedEpisodes = computed(() => this.expandedEpisodes());
   readonly currentExpandDirection = computed(() => this.expandDirection());
-  readonly currentRevealedAdultContent = computed(() => this.revealedAdultContent());
+  readonly currentRevealedAdultContent = computed(() =>
+    this.revealedAdultContent()
+  );
 
   // Computed para verificar se algum card está expandido
   readonly hasExpandedCard = computed(() => this.expandedAnimeId() !== null);
@@ -140,7 +142,8 @@ export class CardService {
     // Assumindo 6 cards por linha em telas grandes
     const cardsPerRow = 6;
     const positionInRow = index % cardsPerRow;
-    const direction = positionInRow >= Math.floor(cardsPerRow / 2) ? 'left' : 'right';
+    const direction =
+      positionInRow >= Math.floor(cardsPerRow / 2) ? 'left' : 'right';
     this.expandDirection.set(direction);
 
     // Limpa outros animes com conteúdo adulto revelado ao expandir
@@ -238,5 +241,5 @@ export class CardService {
     percentage = Math.max(65, Math.min(98, percentage + randomFactor));
 
     return Math.round(percentage);
-  }
+  } 
 }

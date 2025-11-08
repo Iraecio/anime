@@ -155,6 +155,22 @@ export type Database = {
       }
     }
     Views: {
+      animes_by_genre: {
+        Row: {
+          ano: string | null
+          dublado: boolean | null
+          generos: Json | null
+          generos_string: string | null
+          id: number | null
+          link_original: string | null
+          slug: string | null
+          thumb: string | null
+          titulo: string | null
+          total_episodios: number | null
+          ultimo_episodio_criado_em: string | null
+        }
+        Relationships: []
+      }
       animes_complete: {
         Row: {
           atualizado_em: string | null

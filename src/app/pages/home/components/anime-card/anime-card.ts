@@ -1,14 +1,15 @@
 import {
-    Component,
-    ChangeDetectionStrategy,
-    input,
-    inject,
-    output,
-    computed,
+  Component,
+  ChangeDetectionStrategy,
+  input,
+  inject,
+  output,
+  computed,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { SupabaseAnimeWithEpisodes, SupabaseEpisode } from '../../../../services/supabase.service';
 import { CardService } from '../../../../services/card-service.service';
+import { ImageErrorService } from '../../../../services/image-error.service';
 
 export interface AnimeCardEvents {
   cardClick: { anime: SupabaseAnimeWithEpisodes; index: number };
@@ -31,6 +32,7 @@ export interface AnimeCardEvents {
 export class AnimeCard {
   // Dependências
   private cardService = inject(CardService);
+  private imageErrorService = inject(ImageErrorService);
 
   // Inputs
   readonly anime = input.required<SupabaseAnimeWithEpisodes>();
@@ -131,9 +133,13 @@ export class AnimeCard {
   }
 
   // Utilities para template
-  getImageErrorSrc(): string {
+  getImageErrorSrc(): string { 
+    // Reporta o erro de imagem para o serviço quando a imagem falha
+    const anime = this.anime();
+    this.imageErrorService.reportImageError(anime.id);
+    
     return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMjIxIi8+PHRleHQgeD0iNTAlIiB5PSI0NSUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iI2ZmZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkFuaW1lPC90ZXh0PjxjaXJjbGUgY3g9IjUwJSIgY3k9IjU1JSIgcj0iMTAiIGZpbGw9IiNlNTA5MTQiLz48L3N2Zz4=';
-  }
+  } 
 
   getCardAriaLabel(): string {
     const anime = this.anime();
