@@ -3,7 +3,7 @@ export interface Anime {
   title: string;
   description: string;
   image: string;
-  year: number;
+  year: string; // Mudado para string para compatibilidade com o schema do banco
   genre?: string;
   genres?: string[];
   episodes?: number;

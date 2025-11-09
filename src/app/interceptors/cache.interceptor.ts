@@ -89,7 +89,7 @@ function createCacheKey(req: HttpRequest<any>): string {
 function getCacheTTL(req: HttpRequest<any>): number {
   // TTL baseado no tipo de endpoint
   if (req.url.includes('animes_with_latest_episode')) {
-    return 2 * 60 * 1000; // 2 minutos (dados mais dinâmicos)
+    return 1 * 60 * 1000; // 1 minuto (dados mais dinâmicos)
   }
   
   if (req.url.includes('animes') && !req.url.includes('search')) {

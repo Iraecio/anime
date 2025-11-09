@@ -64,14 +64,6 @@
       </div>
     </div>
     } @else {
-    @if (recentAnimes().length > 0 && !isInSearchMode()) {
-    <div class="mb-4">
-      <app-anime-row title="Recém Adicionados" [animes]="recentAnimes()" [showTitle]="true"
-        (onAnimeClick)="handleAnimeCardClick($event)" (onEpisodeClick)="handleEpisodeClick($event)"
-        (onAdultContentToggle)="handleAdultContentToggle($event)">
-      </app-anime-row>
-    </div>
-    }
     @for (anime of animes(); track anime.id; let i = $index) {
     <div class="col-12 col-sm-4 col-md-3 col-lg-2 col-xl-2 mb-4">
       <app-card-anime [anime]="anime" [index]="i" (onCardClick)="handleAnimeCardClick($event)"
@@ -80,10 +72,11 @@
     </div>
     }
     }
-
-    <!-- Paginação -->
-    <div class="d-flex flex-column align-items-center gap-3 mt-5">
-      <app-paginacao [totalItems]="totalAnimes()" [itemsPerPage]="perPage()" [currentPage]="currentPage()"
-        (onPageChange)="handlePageChange($event)"></app-paginacao>
-    </div>
   </div>
+
+  <!-- Paginação -->
+  <div class="d-flex flex-column align-items-center gap-3 mt-5">
+    <app-paginacao [totalItems]="totalAnimes()" [itemsPerPage]="perPage()" [currentPage]="currentPage()"
+      (onPageChange)="handlePageChange($event)"></app-paginacao>
+  </div>
+</div>

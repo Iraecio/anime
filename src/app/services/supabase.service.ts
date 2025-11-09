@@ -4,6 +4,7 @@ import { environment } from '../../environments/environment';
 import { Database } from '../types/supabase';
 import { Observable, from, map, catchError, of, switchMap } from 'rxjs';
 import { CacheService } from './cache.service';
+import { SearchFilters } from '../pages/home/header/search/search.interface';
 
 export type SupabaseAnime = Database['public']['Tables']['animes']['Row'];
 export type SupabaseEpisode = Database['public']['Tables']['episodios']['Row'];
@@ -496,6 +497,172 @@ export class SupabaseService {
       })
     );
   }
+
+  /**
+   * Nova busca de animes com filtros avançados
+   * Usa as funções SQL criadas: search_animes_filtered() e count_animes_filtered()
+   */
+  searchAnimesWithFilters(
+    query?: string,
+    filters?: SearchFilters,
+    page: number = 1,
+    limit: number = 50
+  ): Observable<{ data: SupabaseAnimeWithEpisodes[]; total: number }> {
+    // Temporariamente desabilitando cache para filtros para garantir atualizações
+    // TODO: Implementar cache mais inteligente depois
+    console.log('🔄 Executando busca sem cache para garantir filtros atualizados');
+    return this.fetchFilteredResults(query, filters, page, limit);
+  }
+
+  /**
+   * Método privado para buscar com filtros usando RPC (chamadas de função SQL)
+   */
+  private fetchFilteredResults(
+    query?: string,
+    filters?: SearchFilters,
+    page: number = 1,
+    limit: number = 50
+  ): Observable<{ data: SupabaseAnimeWithEpisodes[]; total: number }> {
+    this.isLoading.set(true);
+    this.error.set(null);
+
+    const offset = (page - 1) * limit;
+
+    // Prepara parâmetros para as funções SQL
+    const searchParams = {
+      p_query: query || null,
+      p_audio_types: filters?.audioType?.length ? filters.audioType : null,
+      p_genres: filters?.genres?.length ? filters.genres : null,
+      p_year: filters?.year || null,
+      p_limit: limit,
+      p_offset: offset
+    };
+
+    // Debug: Log completo dos parâmetros de busca  
+    console.log('🔍 Parâmetros da busca com filtros:', {
+      query,
+      filters,
+      searchParams,
+      'DETALHES DOS FILTROS': {
+        'p_query': searchParams.p_query,
+        'p_audio_types': searchParams.p_audio_types,
+        'p_genres': searchParams.p_genres,
+        'p_year': searchParams.p_year,
+        'p_limit': searchParams.p_limit,
+        'p_offset': searchParams.p_offset
+      }
+    });
+
+    const countParams = {
+      p_query: query || null,
+      p_audio_types: filters?.audioType?.length ? filters.audioType : null,
+      p_genres: filters?.genres?.length ? filters.genres : null,
+      p_year: filters?.year || null
+    };
+
+    // Executa busca e contagem em paralelo usando any para contornar limitações de tipos
+    const searchPromise = (this.supabase as any).rpc('search_animes_filtered', searchParams);
+    const countPromise = (this.supabase as any).rpc('count_animes_filtered', countParams);
+
+    return from(Promise.all([searchPromise, countPromise])).pipe(
+      switchMap(([searchResult, countResult]) => {
+        if (searchResult.error) {
+          throw new Error(`Erro na busca: ${searchResult.error.message}`);
+        }
+        if (countResult.error) {
+          throw new Error(`Erro na contagem: ${countResult.error.message}`);
+        }
+
+        const animes = (searchResult.data as any[]) || [];
+        const total = (countResult.data as number) || 0;
+
+        // Debug: Log dos resultados do SQL
+        console.log('📊 Resultados do SQL:', {
+          'total encontrados': animes.length,
+          'contagem total': total,
+          'primeiros 3 animes': animes.slice(0, 3).map(a => ({
+            titulo: a.titulo,
+            generos: a.generos_array
+          }))
+        });
+
+        if (animes.length === 0) {
+          console.log('⚠️ Nenhum anime encontrado com os filtros aplicados');
+          this.isLoading.set(false);
+          return of({ data: [], total });
+        }
+
+        // Buscar episódios para cada anime usando a view episodios_por_titulo
+        const titulos = animes
+          .map((anime: any) => anime.titulo)
+          .filter((titulo: string) => titulo !== null);
+
+        return from(
+          this.supabase
+            .from('episodios_por_titulo')
+            .select('*')
+            .in('titulo', titulos)
+            .order('numero', { ascending: true })
+        ).pipe(
+          map(({ data: episodiosData, error: episodiosError }) => {
+            if (episodiosError) {
+              throw new Error(episodiosError.message);
+            }
+
+            // Agrupar episódios por título do anime
+            const episodiosPorTitulo = (episodiosData || [])
+              .filter(
+                (episodio) =>
+                  episodio.id !== null &&
+                  episodio.titulo !== null &&
+                  episodio.anime_id !== null &&
+                  episodio.numero !== null
+              )
+              .reduce((acc, episodio) => {
+                const tituloAnime = episodio.titulo!;
+                if (!acc[tituloAnime]) {
+                  acc[tituloAnime] = [];
+                }
+                acc[tituloAnime].push({
+                  id: episodio.id!,
+                  anime_id: episodio.anime_id!,
+                  numero: episodio.numero!,
+                  criado_em: episodio.criado_em,
+                  link_original: episodio.link_original,
+                  link_video: episodio.link_video,
+                });
+                return acc;
+              }, {} as Record<string, SupabaseEpisode[]>);
+
+            // Combinar animes com seus episódios
+            const transformedData: SupabaseAnimeWithEpisodes[] = animes.map((anime: any) => ({
+              id: anime.id,
+              titulo: anime.titulo,
+              thumb: anime.thumb,
+              slug: anime.slug,
+              dublado: anime.dublado,
+              link_original: anime.link_original,
+              ano: anime.ano,
+              status: null, // não disponível na view
+              criado_em: null, // não disponível na view  
+              atualizado_em: null, // não disponível na view
+              episodios: episodiosPorTitulo[anime.titulo] || [],
+              generos: anime.generos_array || [] // Usa o array de gêneros
+            }));
+
+            this.isLoading.set(false);
+            return { data: transformedData, total };
+          })
+        );
+      }),
+      catchError((error) => {
+        this.isLoading.set(false);
+        this.error.set(error.message);
+        console.error('Erro ao pesquisar animes com filtros:', error);
+        return of({ data: [], total: 0 });
+      })
+    );
+  }
    
   // ===== MÉTODOS PARA EPISÓDIOS =====
 
@@ -600,6 +767,21 @@ export class SupabaseService {
     );
   }
 
+  getGenresList(): Observable<string[]> {
+    return from(
+      this.supabase.from('generos').select('nome')
+    ).pipe(
+      map(({ data, error }) => {
+        if (error) {
+          console.error('Erro ao buscar lista de gêneros:', error);
+          return [];
+        }
+        return (data || []).map(g => g.nome).filter((g): g is string => typeof g === 'string');
+      }),
+      catchError(() => of([]))
+    );
+  }
+
   // ===== MÉTODOS DE GERENCIAMENTO DE CACHE =====
 
   /**
@@ -661,6 +843,35 @@ export class SupabaseService {
   }
 
   /**
+   * Busca todos os gêneros disponíveis
+   */
+  getAllGenres(): Observable<string[]> {
+    const cacheKey = 'all_genres';
+    
+    return this.cacheService.getOrSet(
+      cacheKey,
+      () => from(
+        this.supabase
+          .from('generos')
+          .select('nome')
+          .order('nome', { ascending: true })
+      ).pipe(
+        map(({ data, error }) => {
+          if (error) {
+            throw new Error(error.message);
+          }
+          return (data || []).map(genre => genre.nome).filter(Boolean);
+        }),
+        catchError((error) => {
+          console.error('Erro ao buscar gêneros:', error);
+          return of([]);
+        })
+      ),
+      10 * 60 * 1000 // Cache por 10 minutos
+    );
+  }
+
+  /**
    * Pré-carrega cache com dados frequentemente acessados
    */
   preloadCache(): void {
@@ -669,5 +880,8 @@ export class SupabaseService {
     
     // Pré-carrega segunda página se necessário
     this.getAnimes(2, 50).subscribe();
+    
+    // Pré-carrega gêneros
+    this.getAllGenres().subscribe();
   }
 }

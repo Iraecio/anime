@@ -1,4 +1,12 @@
-import { Component, computed, inject, OnInit, signal, HostListener, ChangeDetectionStrategy } from '@angular/core';
+import {
+  Component,
+  computed,
+  inject,
+  OnInit,
+  signal,
+  HostListener,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import {
@@ -11,11 +19,10 @@ import { CacheDebugComponent } from '../../components/cache-debug.component';
 import { environment } from '../../../environments/environment';
 import { PaginacaoComponent } from './paginacao/paginacao';
 import { SearchComponent } from './header/search/search';
-import { SearchEvent } from './header/search/search.interface';
+import { SearchEvent, SearchFilters } from './header/search/search.interface';
 import { PaginationEvent } from './paginacao/paginacao.interface';
 import { AnimeCard, AnimeCardEvents } from './components/anime-card/anime-card';
 import { CardService } from '../../services/card-service.service';
-import { AnimeRow } from './components/anime-row/anime-row';
 
 @Component({
   selector: 'app-home',
@@ -25,7 +32,6 @@ import { AnimeRow } from './components/anime-row/anime-row';
     PaginacaoComponent,
     SearchComponent,
     AnimeCard,
-    AnimeRow,
   ],
   templateUrl: './home.html',
   styleUrl: './home.scss',
@@ -52,13 +58,19 @@ export class Home implements OnInit {
     debounceTime: 300,
     minQueryLength: 0,
     placeholder: 'Buscar animes por título...',
-    maxLength: 100
+    maxLength: 100,
   };
 
   // Computed properties do CardService
-  readonly expandedAnimeId = computed(() => this.cardService.currentExpandedAnimeId());
-  readonly expandedEpisodes = computed(() => this.cardService.currentExpandedEpisodes());
-  readonly expandedAnime = computed(() => this.cardService.currentExpandedAnime());
+  readonly expandedAnimeId = computed(() =>
+    this.cardService.currentExpandedAnimeId()
+  );
+  readonly expandedEpisodes = computed(() =>
+    this.cardService.currentExpandedEpisodes()
+  );
+  readonly expandedAnime = computed(() =>
+    this.cardService.currentExpandedAnime()
+  );
   readonly hasExpandedCard = computed(() => this.cardService.hasExpandedCard());
 
   // Computed para mostrar estado de loading (apenas loading principal, não busca)
@@ -69,7 +81,6 @@ export class Home implements OnInit {
 
   // Computed para mostrar debug do cache (apenas em desenvolvimento)
   showCacheDebug = computed(() => {
-    return false;
     return (
       !environment.production ||
       localStorage.getItem('show-cache-debug') === 'true'
@@ -85,37 +96,51 @@ export class Home implements OnInit {
   });
 
   readonly actionAnimes = computed(() => {
-    return this.animes().filter(anime => 
-      anime.generos?.some(genre => genre.toLowerCase().includes('action') || genre.toLowerCase().includes('ação'))
-    ).slice(0, 12);
+    return this.animes()
+      .filter((anime) =>
+        anime.generos?.some(
+          (genre) =>
+            genre.toLowerCase().includes('action') ||
+            genre.toLowerCase().includes('ação')
+        )
+      )
+      .slice(0, 12);
   });
 
   readonly romanceAnimes = computed(() => {
-    return this.animes().filter(anime => 
-      anime.generos?.some(genre => genre.toLowerCase().includes('romance'))
-    ).slice(0, 12);
+    return this.animes()
+      .filter((anime) =>
+        anime.generos?.some((genre) => genre.toLowerCase().includes('romance'))
+      )
+      .slice(0, 12);
   });
 
   readonly completedAnimes = computed(() => {
-    return this.animes().filter(anime => anime.status === 'completed').slice(0, 12);
+    return this.animes()
+      .filter((anime) => anime.status === 'completed')
+      .slice(0, 12);
   });
 
   readonly ongoingAnimes = computed(() => {
-    return this.animes().filter(anime => anime.status === 'ongoing').slice(0, 12);
+    return this.animes()
+      .filter((anime) => anime.status === 'ongoing')
+      .slice(0, 12);
   });
-  
+
   handleSearch(searchEvent: SearchEvent): void {
-    const { query, immediate } = searchEvent;
-    
-    if (query === this.searchQuery()) return; // Ignora se não mudou
+    console.log('Search event received:', searchEvent);
+    const { query, immediate, filters } = searchEvent;
 
     // Atualiza estado de busca e reseta página
     this.searchQuery.set(query);
     this.currentPage.set(1);
     this.cardService.clearAllState();
-    
-    // Se é busca imediata (Enter), força execução
-    this.loadCurrentData();
+
+    // Limpa cache de busca para garantir dados atualizados
+    this.supabaseService.invalidateSearchCache();
+
+    // Usa a nova função com filtros
+    this.searchAnimesWithFilters(query, filters);
   }
 
   handleSearchClear(): void {
@@ -179,10 +204,61 @@ export class Home implements OnInit {
       });
   }
 
+  // Nova busca com filtros avançados
+  private searchAnimesWithFilters(query: string, filters?: SearchFilters): void {
+    const trimmedQuery = query?.trim();
+
+    // Debug: Log detalhado dos filtros recebidos
+    console.log('🏠 HomeComponent - Filtros recebidos:', {
+      query,
+      trimmedQuery,
+      filters,
+      'audioType específico': filters?.audioType,
+      'genres específico': filters?.genres,
+      'year específico': filters?.year
+    });
+
+    // Verifica se há filtros válidos
+    const hasFilters = filters && (
+      (filters.audioType && filters.audioType.length > 0) ||
+      (filters.genres && filters.genres.length > 0) ||
+      filters.year
+    );
+
+    console.log('🔍 Análise de filtros:', {
+      hasFilters,
+      'tem audioType': filters?.audioType && filters.audioType.length > 0,
+      'tem genres': filters?.genres && filters.genres.length > 0,
+      'tem year': !!filters?.year
+    });
+
+    if (!trimmedQuery && !hasFilters) {
+      // Se não há busca nem filtros válidos, carrega animes normalmente
+      console.log('🏠 Nenhum filtro ativo, carregando animes normalmente');
+      this.loadAnimes();
+      return;
+    }
+
+    this.isSearching.set(true);
+    this.supabaseService
+      .searchAnimesWithFilters(trimmedQuery || undefined, filters, this.currentPage(), this.perPage())
+      .subscribe({
+        next: (result) => {
+          this.animes.set(result.data);
+          this.totalAnimes.set(result.total);
+          this.isSearching.set(false);
+        },
+        error: (error) => {
+          console.error('Erro ao buscar animes com filtros:', error);
+          this.isSearching.set(false);
+        },
+      });
+  }
 
   // Método auxiliar que escolhe entre busca ou carregamento normal
   private loadCurrentData(): void {
     if (this.isInSearchMode()) {
+      // Para compatibilidade, usa a busca antiga se não houver filtros implementados
       this.searchAnimes();
     } else {
       this.loadAnimes();
@@ -211,7 +287,12 @@ export class Home implements OnInit {
 
   // Handler para toggle de conteúdo adulto
   handleAdultContentToggle(event: AnimeCardEvents['adultContentToggle']): void {
-    console.log('Adult content toggled:', event.animeId, 'revealed:', event.revealed);
+    console.log(
+      'Adult content toggled:',
+      event.animeId,
+      'revealed:',
+      event.revealed
+    );
   }
 
   // Métodos de utilidade que delegam para o CardService
@@ -319,6 +400,4 @@ export class Home implements OnInit {
   // ========================================
   // NETFLIX-STYLE HELPER METHODS
   // ========================================
-
-
 }
