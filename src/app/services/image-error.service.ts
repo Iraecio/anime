@@ -15,6 +15,7 @@ export interface ImageUpdateResponse {
 })
 export class ImageErrorService {
   private readonly API_URL = 'http://54.221.71.79/images';
+  //private readonly API_URL = 'http://localhost:3000/images';
   private readonly BATCH_DELAY = 5000; // 5 segundos de delay para agrupar erros
 
   // Set para armazenar IDs únicos de animes com erro de imagem
