@@ -67,18 +67,13 @@
 
   <!-- Player de vídeo em modo cinema -->
   <main class="video-container">
-    @if(videoUrlBase64() != null) {
-    <video controls="" autoplay="" name="media" class="video-player">
-      <source [src]="videoUrlBase64()" type="video/mp4">
-    </video>
-    }
-    @if (safeVideoUrl() && !videoUrlBase64()) {
+    @if (safeVideoUrl() ) {
     <iframe [src]="safeVideoUrl()" frameborder="0" allowfullscreen
       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share;"
       class="video-player">
     </iframe>
     }
-    @if (!safeVideoUrl() && !videoUrlBase64()) {
+    @if (!safeVideoUrl() ) {
     <div class="no-video">
       <div class="no-video-icon">📹</div>
       <h3>Vídeo não disponível</h3>

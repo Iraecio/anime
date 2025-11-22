@@ -19,7 +19,6 @@ import {
 } from '../../services/supabase.service';
 import { EpisodeService } from '../../services/episode.service';
 import { HttpClient } from '@angular/common/http';
-import { lastValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-episode-player',
@@ -40,26 +39,17 @@ export class EpisodePlayer implements OnInit, AfterViewInit {
   private episodeService = inject(EpisodeService);
   private sanitizer = inject(DomSanitizer);
 
-  private episodeBase64 = signal<string | null>(null);
-  videoUrlBase64 = signal<string | null>(null);
-
-  // Estado do componente
   currentEpisode = signal<SupabaseEpisode | null>(null);
   currentAnime = signal<SupabaseAnime | null>(null);
   allEpisodes = signal<SupabaseEpisode[]>([]);
   isLoading = signal(true);
   error = signal<string | null>(null);
-
-  // Signals para navegação do carrossel
   canScrollLeft = signal(false);
   canScrollRight = signal(true);
   isScrolling = signal(false);
-
-  // Touch/swipe support
   private touchStartX = 0;
   private touchEndX = 0;
 
-  // Computed properties para navegação
   currentEpisodeIndex = computed(() => {
     const current = this.currentEpisode();
     const episodes = this.allEpisodes();
@@ -96,45 +86,19 @@ export class EpisodePlayer implements OnInit, AfterViewInit {
     return null;
   });
 
-  // Computed para mostrar todos os episódios
   allVisibleEpisodes = computed(() => this.allEpisodes());
 
-  // Computed para URL segura do iframe
   safeVideoUrl = computed(() => {
     const episode = this.currentEpisode();
     if (!episode?.link_video) return null;
-    //pega a url do nosso site como referer
     return this.sanitizer.bypassSecurityTrustResourceUrl(episode.link_video);
   });
-
-  private convertEpisodeIdToBase64(episodeId: number): string | null {
-    try {
-      const encoded = btoa(episodeId.toString());
-      return encoded;
-    } catch (error) {
-      console.error('Erro ao codificar ID do episódio:', error);
-      return null;
-    }
-  }
-
-  private convertEpisodeIdBase64ToEpisodeId(
-    episodeIdBase64: string
-  ): number | null {
-    try {
-      const decoded = atob(episodeIdBase64);
-      return parseInt(decoded, 10);
-    } catch (error) {
-      console.error('Erro ao decodificar ID do episódio:', error);
-      return null;
-    }
-  }
 
   ngOnInit() {
     this.route.params.subscribe((params) => {
       const episodeIdParam = params['episodeId'];
       const animeSlugParam = params['animeSlug'];
 
-      // Validação mais robusta dos parâmetros
       if (!episodeIdParam || !animeSlugParam) {
         this.error.set(
           'Link inválido: parâmetros obrigatórios não encontrados'
@@ -143,21 +107,6 @@ export class EpisodePlayer implements OnInit, AfterViewInit {
         return;
       }
 
-      //converte o hashBase64
-      const hashBase64 = this.convertEpisodeIdToBase64(episodeIdParam);
-      this.episodeBase64.set(hashBase64);
-      this.findEpisodeByHashBase64(hashBase64!).then((linkVideo) => {
-        this.videoUrlBase64.set(linkVideo);
-      });
-      const episodeId = +episodeIdParam;
-
-      if (isNaN(episodeId) || episodeId <= 0) {
-        this.error.set('ID do episódio inválido');
-        this.isLoading.set(false);
-        return;
-      }
-
-      // Normaliza o slug antes de usar
       const animeSlug = this.normalizeSlug(animeSlugParam);
 
       if (animeSlug.length < 2) {
@@ -166,82 +115,15 @@ export class EpisodePlayer implements OnInit, AfterViewInit {
         return;
       }
 
-      console.log(`Carregando episódio ${episodeId} do anime: ${animeSlug}`);
-      this.loadEpisodeDataBySlug(episodeId, animeSlug);
+      this.loadEpisodeData(+episodeIdParam, animeSlug);
     });
   }
 
-  private async loadEpisodeDataBySlug(episodeId: number, animeSlug: string) {
+  private async loadEpisodeData(episodeId: number, expectedSlug: string) {
     try {
       this.isLoading.set(true);
       this.error.set(null);
 
-      // Primeiro, buscar o anime pelo slug
-      const animeResult = await this.findAnimeBySlug(animeSlug);
-
-      if (!animeResult) {
-        // Se não encontrar por slug, tenta buscar o episódio diretamente
-        // e usar o anime_id do episódio para buscar o anime
-        console.warn(
-          `Anime não encontrado por slug: ${animeSlug}. Tentando busca alternativa...`
-        );
-        return await this.loadEpisodeDataFallback(episodeId, animeSlug);
-      }
-
-      // Carregar episódio atual e lista de episódios
-      const [episodeResult, episodesResult] = await Promise.all([
-        this.supabaseService.getEpisodeById(episodeId).toPromise(),
-        this.supabaseService.getEpisodesByAnimeId(animeResult.id).toPromise(),
-      ]);
-
-      if (!episodeResult) {
-        throw new Error('Episódio não encontrado');
-      }
-
-      // Verificar se o episódio pertence ao anime correto
-      if (episodeResult.anime_id !== animeResult.id) {
-        console.warn(
-          'Episódio não pertence ao anime do slug. Tentando busca alternativa...'
-        );
-        return await this.loadEpisodeDataFallback(episodeId, animeSlug);
-      }
-
-      this.currentEpisode.set(episodeResult);
-      this.currentAnime.set(animeResult);
-      this.allEpisodes.set(episodesResult || []);
-
-      // Centralizar o episódio atual após carregar episódios
-      setTimeout(() => {
-        this.centerCurrentEpisode();
-      }, 1000); // Timeout maior para garantir renderização
-
-      // Marcar episódio como assistido
-      this.episodeService.markAsWatched(episodeId);
-
-      console.log('assistido');
-      this.isLoading.set(false);
-    } catch (error) {
-      console.error('Erro ao carregar dados do episódio:', error);
-      // Tenta busca alternativa como último recurso
-      try {
-        await this.loadEpisodeDataFallback(episodeId, animeSlug);
-      } catch (fallbackError) {
-        console.error('Erro na busca alternativa:', fallbackError);
-        this.error.set(
-          'Erro ao carregar o episódio. Verifique se o link está correto.'
-        );
-        this.isLoading.set(false);
-      }
-    }
-  }
-
-  // Método de fallback que busca o episódio primeiro e depois o anime
-  private async loadEpisodeDataFallback(
-    episodeId: number,
-    expectedSlug: string
-  ) {
-    try {
-      // Buscar o episódio primeiro
       const episodeResult = await this.supabaseService
         .getEpisodeById(episodeId)
         .toPromise();
@@ -250,136 +132,60 @@ export class EpisodePlayer implements OnInit, AfterViewInit {
         throw new Error('Episódio não encontrado');
       }
 
-      // Buscar o anime usando o anime_id do episódio
       const animeResult = await this.supabaseService
         .getAnimeById(episodeResult.anime_id)
         .toPromise();
 
       if (!animeResult) {
-        throw new Error('Anime do episódio não encontrado');
+        throw new Error('Anime não encontrado');
       }
 
-      // Verificar se o slug do anime encontrado corresponde ao esperado
       const actualSlug = this.createSlug(animeResult.titulo);
+
       if (actualSlug !== expectedSlug) {
-        console.warn(
-          `Slug esperado: ${expectedSlug}, slug real: ${actualSlug}. Redirecionando para URL correta...`
-        );
-        // Redireciona para a URL correta
         this.router.navigate(['/player', actualSlug, episodeId], {
           replaceUrl: true,
         });
         return;
       }
 
-      // Carregar todos os episódios do anime
-      const episodesResult = await this.supabaseService
-        .getEpisodesByAnimeId(animeResult.id)
-        .toPromise();
-
       this.currentEpisode.set(episodeResult);
       this.currentAnime.set(animeResult);
-      this.allEpisodes.set(episodesResult || []);
+      this.allEpisodes.set(animeResult.episodios || []);
 
-      // Centralizar o episódio atual após carregar episódios
       setTimeout(() => {
         this.centerCurrentEpisode();
-      }, 1000); // Timeout maior para garantir renderização
+      }, 1000);
 
-      // Marcar episódio como assistido
       this.episodeService.markAsWatched(episodeId);
       this.isLoading.set(false);
     } catch (error) {
-      console.error('Erro no carregamento alternativo:', error);
-      throw error;
-    }
-  }
-
-  private async findEpisodeByHashBase64(
-    hashBase64: string
-  ): Promise<string | null> {
-    try {
-      const request = this.httpClient.get<{ linkVideo: string }>(
-        `http://54.221.71.79/e/${hashBase64}`
+      console.error('Erro ao carregar dados do episódio:', error);
+      this.error.set(
+        'Erro ao carregar o episódio. Verifique se o link está correto.'
       );
-      const result = await lastValueFrom(request);
-      return result.linkVideo || null;
-    } catch (error) {
-      console.error('Erro ao buscar episódio por hashBase64:', error);
-      return null;
+      this.isLoading.set(false);
     }
   }
 
-  private async findAnimeBySlug(slug: string): Promise<SupabaseAnime | null> {
-    try {
-      // Normaliza o slug de entrada
-      const normalizedSlug = this.normalizeSlug(slug);
-
-      // Primeiro, tenta uma busca paginada eficiente
-      let page = 1;
-      const perPage = 50; // Busca em lotes menores
-      let foundAnime: SupabaseAnime | null = null;
-
-      while (!foundAnime && page <= 20) {
-        // Limita a 1000 animes (20 * 50)
-        const result = await this.supabaseService
-          .getAnimes(page, perPage)
-          .toPromise();
-
-        if (!result || !result.data || result.data.length === 0) {
-          break; // Não há mais dados
-        }
-
-        // Procura o anime nesta página
-        foundAnime =
-          result.data.find(
-            (anime: SupabaseAnime) =>
-              this.createSlug(anime.titulo) === normalizedSlug
-          ) || null;
-
-        if (foundAnime) {
-          console.log(`Anime encontrado na página ${page}:`, foundAnime.titulo);
-          return foundAnime;
-        }
-
-        page++;
-
-        // Se chegou ao final dos dados (menos resultados que o solicitado)
-        if (result.data.length < perPage) {
-          break;
-        }
-      }
-
-      console.warn(
-        `Anime não encontrado para o slug: ${normalizedSlug} (original: ${slug})`
-      );
-      return null;
-    } catch (error) {
-      console.error('Erro ao buscar anime por slug:', error);
-      return null;
-    }
-  }
-
-  // Cria um slug amigável para URL a partir do título
   private createSlug(title: string): string {
     return title
       .toLowerCase()
-      .normalize('NFD') // Decompor caracteres com acentos
-      .replace(/[\u0300-\u036f]/g, '') // Remover diacríticos
-      .replace(/[^a-z0-9\s-]/g, '') // Remover caracteres especiais
-      .replace(/\s+/g, '-') // Substituir espaços por hífens
-      .replace(/-+/g, '-') // Remover hífens duplicados
-      .replace(/^-+|-+$/g, '') // Remover hífens do início e fim
-      .trim(); // Remover espaços em branco
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .trim();
   }
 
-  // Normaliza um slug que pode vir da URL com problemas
   private normalizeSlug(slug: string): string {
     return slug
       .toLowerCase()
-      .replace(/[^a-z0-9-]/g, '') // Remove caracteres inválidos
-      .replace(/-+/g, '-') // Remove hífens duplicados
-      .replace(/^-+|-+$/g, '') // Remove hífens do início e fim
+      .replace(/[^a-z0-9-]/g, '')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '')
       .trim();
   }
 
@@ -425,15 +231,12 @@ export class EpisodePlayer implements OnInit, AfterViewInit {
     const currentEpisode = this.currentEpisode();
 
     if (episodes.length <= 1) {
-      return; // Não há outros episódios para escolher
+      return;
     }
 
-    // Filtrar episódios diferentes do atual
     const availableEpisodes = episodes.filter(
       (ep) => ep.id !== currentEpisode?.id
     );
-
-    // Selecionar aleatório
     const randomIndex = Math.floor(Math.random() * availableEpisodes.length);
     const randomEpisode = availableEpisodes[randomIndex];
 
@@ -443,14 +246,13 @@ export class EpisodePlayer implements OnInit, AfterViewInit {
   }
 
   ngAfterViewInit() {
-    // Centralizar episódio atual após a view ser inicializada (se já tiver dados)
     setTimeout(() => {
       if (this.currentEpisode() && this.allEpisodes().length > 0) {
         this.centerCurrentEpisode();
       } else {
         this.updateScrollButtons();
       }
-    }, 1000); // Timeout maior para dar tempo de renderizar
+    }, 1000);
   }
 
   scrollLeft() {
@@ -479,10 +281,8 @@ export class EpisodePlayer implements OnInit, AfterViewInit {
 
     this.isScrolling.set(true);
     const container = this.scrollContainer.nativeElement;
-
-    // Scroll baseado na largura do container visível
     const containerWidth = container.clientWidth;
-    const scrollAmount = containerWidth * 0.8; // Scroll 80% da largura visível
+    const scrollAmount = containerWidth * 0.8;
 
     container.scrollBy({
       left: scrollAmount,
@@ -510,16 +310,12 @@ export class EpisodePlayer implements OnInit, AfterViewInit {
     const clientWidth = container.clientWidth;
     const maxScrollLeft = scrollWidth - clientWidth;
 
-    // Só mostra botão esquerdo se scrollou para a direita (há conteúdo escondido à esquerda)
-    this.canScrollLeft.set(scrollLeft > 5); // 5px de margem para evitar flickering
-
-    // Só mostra botão direito se há conteúdo escondido à direita
-    this.canScrollRight.set(scrollLeft < maxScrollLeft - 5); // 5px de margem
+    this.canScrollLeft.set(scrollLeft > 5);
+    this.canScrollRight.set(scrollLeft < maxScrollLeft - 5);
   }
 
   private centerCurrentEpisode() {
-    if (!this.scrollContainer) {
-      console.log('ScrollContainer não disponível');
+    if (!this.scrollContainer) { 
       return;
     }
 
@@ -527,43 +323,24 @@ export class EpisodePlayer implements OnInit, AfterViewInit {
     const episodes = this.allEpisodes();
     const currentIndex = this.currentEpisodeIndex();
 
-    console.log('centerCurrentEpisode chamado:', {
-      episodesLength: episodes.length,
-      currentIndex,
-      hasContainer: !!this.scrollContainer,
-    });
-
     if (currentIndex < 0 || episodes.length === 0) {
-      console.log('Índice inválido ou sem episódios');
       return;
     }
 
-    // Função para tentar centralizar com retry
     const tryCenter = (attempts = 0) => {
       if (attempts > 10) {
-        console.log('Máximo de tentativas atingido');
         return;
       }
 
       const episodeCards = container.querySelectorAll('.episode-card');
 
-      console.log(`Tentativa ${attempts + 1} - Elementos encontrados:`, {
-        cardsFound: episodeCards.length,
-        expectedCards: episodes.length,
-        containerScrollWidth: container.scrollWidth,
-        containerClientWidth: container.clientWidth,
-      });
-
-      // Verifica se todos os cards foram renderizados
       if (episodeCards.length < episodes.length) {
-        console.log('Ainda renderizando cards, tentando novamente...');
         setTimeout(() => tryCenter(attempts + 1), 200);
         return;
       }
 
       const currentCard = episodeCards[currentIndex] as HTMLElement;
       if (!currentCard) {
-        console.log(`Card atual não encontrado no índice: ${currentIndex}`);
         setTimeout(() => tryCenter(attempts + 1), 200);
         return;
       }
@@ -571,53 +348,31 @@ export class EpisodePlayer implements OnInit, AfterViewInit {
       const containerWidth = container.clientWidth;
       const cardLeft = currentCard.offsetLeft;
       const cardWidth = currentCard.offsetWidth;
-
-      // Detecção de breakpoint para ajustar centralização
       const isMobile = window.innerWidth <= 575;
       const isTablet = window.innerWidth > 575 && window.innerWidth <= 991;
-      const isDesktop = window.innerWidth > 991;
 
       let scrollPosition: number;
 
       if (isMobile) {
-        // Em mobile, centraliza mais precisamente para mostrar apenas o atual + vizinhos próximos
         scrollPosition = cardLeft - containerWidth / 2 + cardWidth / 2;
       } else if (isTablet) {
-        // Em tablet, permite ver mais contexto (2-3 cards de cada lado)
-        const offsetRatio = 0.4; // Centralização ligeiramente deslocada
+        const offsetRatio = 0.4;
         scrollPosition =
           cardLeft - containerWidth * offsetRatio + cardWidth / 2;
       } else {
-        // Desktop mantém centralização padrão
         scrollPosition = cardLeft - containerWidth / 2 + cardWidth / 2;
       }
-
-      // Garante que não role além dos limites
       const maxScroll = container.scrollWidth - containerWidth;
       const finalPosition = Math.max(0, Math.min(scrollPosition, maxScroll));
-
-      console.log('Centralizando episódio (responsivo):', {
-        currentIndex,
-        cardLeft,
-        cardWidth,
-        containerWidth,
-        screenWidth: window.innerWidth,
-        breakpoint: isMobile ? 'mobile' : isTablet ? 'tablet' : 'desktop',
-        scrollPosition,
-        finalPosition,
-        episodeNumber: episodes[currentIndex]?.numero,
-      });
 
       container.scrollTo({
         left: finalPosition,
         behavior: 'smooth',
       });
 
-      // Atualiza os botões após o scroll
       setTimeout(() => this.updateScrollButtons(), 300);
     };
 
-    // Inicia as tentativas
     setTimeout(() => tryCenter(), 100);
   }
 
@@ -629,12 +384,8 @@ export class EpisodePlayer implements OnInit, AfterViewInit {
     }
   }
 
-  // Métodos removidos - não mais necessários com flex layout
-
-  // Navegação por teclado
   @HostListener('window:keydown', ['$event'])
   onKeyDown(event: KeyboardEvent) {
-    // Apenas processar se não estivermos em um campo de input
     if ((event.target as HTMLElement)?.tagName === 'INPUT') {
       return;
     }
@@ -666,7 +417,6 @@ export class EpisodePlayer implements OnInit, AfterViewInit {
     }
   }
 
-  // Métodos para touch/swipe
   onTouchStart(event: TouchEvent) {
     this.touchStartX = event.touches[0].clientX;
   }
@@ -677,15 +427,13 @@ export class EpisodePlayer implements OnInit, AfterViewInit {
   }
 
   private handleSwipe() {
-    const swipeThreshold = 50; // Minimum distance for a swipe
+    const swipeThreshold = 50;
     const swipeDistance = this.touchStartX - this.touchEndX;
 
     if (Math.abs(swipeDistance) > swipeThreshold) {
       if (swipeDistance > 0) {
-        // Swipe left - scroll right
         this.scrollRight();
       } else {
-        // Swipe right - scroll left
         this.scrollLeft();
       }
     }
@@ -693,21 +441,18 @@ export class EpisodePlayer implements OnInit, AfterViewInit {
 
   @HostListener('window:resize')
   onWindowResize() {
-    // Re-centralizar episódio atual ao redimensionar
     setTimeout(() => {
       if (this.currentEpisode() && this.allEpisodes().length > 0) {
         this.centerCurrentEpisode();
       } else {
         this.updateScrollButtons();
       }
-    }, 200); // Timeout maior para aguardar layout se ajustar
+    }, 200);
   }
 
-  // Picture-in-Picture
   async togglePip() {
     const video = document.querySelector('video');
     if (!video) return;
     video?.requestPictureInPicture();
-    console.log('togglePip chamado');
   }
 }

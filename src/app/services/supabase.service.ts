@@ -266,7 +266,7 @@ export class SupabaseService {
 
     return from(
       this.supabase
-        .from('animes_with_latest_episode')
+        .from('animes')
         .select('*')
         .eq('id', id)
         .single()
@@ -280,12 +280,12 @@ export class SupabaseService {
           return of(null);
         }
 
-        // Buscar episódios para este anime usando a view episodios_por_titulo
+        // Buscar episódios para este anime
         return from(
           this.supabase
-            .from('episodios_por_titulo')
+            .from('episodios')
             .select('*')
-            .eq('titulo', animeData.titulo)
+            .eq('anime_id', id)
             .order('numero', { ascending: true })
         ).pipe(
           map(({ data: episodiosData, error: episodiosError }) => {
@@ -312,24 +312,18 @@ export class SupabaseService {
 
             // Combinar anime com seus episódios
             const animeWithEpisodes: SupabaseAnimeWithEpisodes = {
-              id: animeData.id!,
-              titulo: animeData.titulo!,
+              id: animeData.id,
+              titulo: animeData.titulo,
               thumb: animeData.thumb,
               slug: animeData.slug,
               dublado: animeData.dublado,
-              link_original: animeData.link_original || '',
-              status: null, // não disponível na view
-              criado_em: null, // não disponível na view
-              atualizado_em: null, // não disponível na view
-              ano: animeData.ano || null, // Adiciona o campo 'ano' para compatibilidade de tipo
+              link_original: animeData.link_original,
+              status: animeData.status,
+              criado_em: animeData.criado_em,
+              atualizado_em: animeData.atualizado_em,
+              ano: animeData.ano,
               episodios,
-              generos: Array.isArray(animeData.generos)
-                ? animeData.generos.filter(
-                    (g): g is string => typeof g === 'string'
-                  )
-                : typeof animeData.generos === 'string'
-                ? [animeData.generos]
-                : [],
+              generos: [], // Gêneros não disponíveis na tabela base
             };
 
             return animeWithEpisodes;

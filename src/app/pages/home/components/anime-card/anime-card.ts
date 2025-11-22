@@ -5,11 +5,13 @@ import {
   inject,
   output,
   computed,
+  signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { SupabaseAnimeWithEpisodes, SupabaseEpisode } from '../../../../services/supabase.service';
 import { CardService } from '../../../../services/card-service.service';
 import { ImageErrorService } from '../../../../services/image-error.service';
+import { AnimeCardService } from './anime-card.service';
 
 export interface AnimeCardEvents {
   cardClick: { anime: SupabaseAnimeWithEpisodes; index: number };
@@ -33,10 +35,14 @@ export class AnimeCard {
   // Dependências
   private cardService = inject(CardService);
   private imageErrorService = inject(ImageErrorService);
+  private animeCardService = inject(AnimeCardService);
 
   // Inputs
   readonly anime = input.required<SupabaseAnimeWithEpisodes>();
   readonly index = input.required<number>();
+
+  // Estado local
+  readonly isUpdating = signal<boolean>(false);
 
   // Outputs
   readonly onCardClick = output<AnimeCardEvents['cardClick']>();
@@ -113,6 +119,23 @@ export class AnimeCard {
   handleCloseExpansion(event: Event): void {
     event.stopPropagation();
     this.cardService.collapseAnime();
+  }
+
+  handleUpdateRequest(event: Event): void {
+    event.stopPropagation();
+    const animeId = this.anime().id;
+    
+    this.isUpdating.set(true);
+    this.animeCardService.getUpdateEpisodesFromAnime(animeId).subscribe({
+      next: () => {
+        this.isUpdating.set(false);
+        console.log(`Atualização solicitada para anime ID: ${animeId}`);
+      },
+      error: (error) => {
+        this.isUpdating.set(false);
+        console.error('Erro ao solicitar atualização:', error);
+      }
+    });
   }
 
   // Keyboard navigation
